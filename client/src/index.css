@@ -1,0 +1,141 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.all-contracts {
+  color: #573391;
+  font-weight: 800;
+  font-size: 2.5rem;
+  letter-spacing: 2px;
+}
+
+.multiselect {
+  width: 250px !important;
+}
+
+.multiselect1 {
+  width: 300px !important;
+}
+
+.download {
+  width: 280px;
+}
+
+.update {
+  width: 100px;
+}
+
+.frequency {
+  width: 180px;
+}
+
+.modal {
+  display: block;
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0, 0, 0); /* Fallback color */
+  background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto; /* 15% from the top and centered */
+  padding: 20px;
+  border: 1px solid #888;
+  width: 30%; /* Could be more or less, depending on screen size */
+}
+
+@media (max-width: 767px) {
+  .mobile-table {
+    display: none;
+  }
+
+  .multiselect1 {
+    width: 200px !important;
+  }
+}
+
+.emo-name {
+  visibility: hidden;
+  opacity: 0;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.emo:hover img {
+  cursor: pointer;
+  transition: all 1s;
+  transform: scale(1.2);
+}
+
+.emo:hover .emo-name {
+  visibility: visible !important;
+  transition: all 1s;
+  opacity: 1;
+}
+
+@media (max-width: 767px) {
+  .textarea {
+    margin-top: 0px;
+  }
+
+  .name {
+    padding: 0px !important;
+  }
+
+  .name input {
+    width: 290px;
+  }
+}
+
+@media (max-width: 424px) {
+  .name input {
+    width: 250px;
+  }
+}
+
+@media (max-width: 374px) {
+  .name input {
+    width: 200px;
+  }
+}
+
+.feedback-banner {
+  height: 120px;
+  width: 100%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+}
+
+.feedbackbg {
+  margin-top: 0px !important;
+}
