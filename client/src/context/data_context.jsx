@@ -22,6 +22,7 @@ import {
   LOGIN_FAIL,
   LOGOUT,
   CREATE_CARDS,
+  CUSTOM_ALERT,
   CLEAR_VALUES,
   CONTRACT_FAIL,
   FETCH_SERVICES,
@@ -53,9 +54,6 @@ import {
   SERVICE_INTIMATION_FAIL,
   BRANCH_REPORT,
   BRANCH_REPORT_FAIL,
-  FAIL_ALERT,
-  TOGGLE_CODE,
-  CUSTOM_ALERT,
 } from "./action";
 
 const DataContext = createContext();
@@ -78,7 +76,7 @@ export const initialState = {
   contractCreated: false,
   contractNo: "",
   type: "NC",
-  sales: "PTL",
+  sales: "",
   company: "EXPC",
   allServices: [],
   billToAddress: {
@@ -189,7 +187,6 @@ export const initialState = {
   contractCode: "",
 };
 
-// eslint-disable-next-line react/prop-types
 export const DataProvider = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
@@ -218,12 +215,8 @@ export const DataProvider = ({ children }) => {
     }
   );
 
-  const displayAlert = () => {
-    dispatch({ type: DISPLAY_ALERT });
-    clearAlert();
-  };
-  const customAlert = (msg) => {
-    dispatch({ type: CUSTOM_ALERT, payload: msg });
+  const displayAlert = (message = "An error occurred. Please try again.") => {
+    dispatch({ type: CUSTOM_ALERT, payload: message });
     clearAlert();
   };
 
@@ -328,10 +321,7 @@ export const DataProvider = ({ children }) => {
       const res = await authFetch.post("/admin", {
         commentsList: addComment,
       });
-      dispatch({
-        type: ADD_VALUE,
-        payload: { msg: res.data.msg, data: res.data.data },
-      });
+      dispatch({ type: ADD_VALUE, payload: res.data.msg });
     } catch (error) {
       console.log(error);
     }
@@ -343,10 +333,7 @@ export const DataProvider = ({ children }) => {
       const res = await authFetch.post("/admin", {
         sales: addSale,
       });
-      dispatch({
-        type: ADD_VALUE,
-        payload: { msg: res.data.msg, data: res.data.data },
-      });
+      dispatch({ type: ADD_VALUE, payload: res.data.msg });
     } catch (error) {
       console.log(error);
     }
@@ -358,10 +345,7 @@ export const DataProvider = ({ children }) => {
       const res = await authFetch.post("/admin", {
         business: addBusines,
       });
-      dispatch({
-        type: ADD_VALUE,
-        payload: { msg: res.data.msg, data: res.data.data },
-      });
+      dispatch({ type: ADD_VALUE, payload: res.data.msg });
     } catch (error) {
       console.log(error);
     }
@@ -370,27 +354,10 @@ export const DataProvider = ({ children }) => {
   const addContractCode = async () => {
     try {
       const { addCode } = state;
-      const data = {
-        name: addCode,
-        active: true,
-      };
       const res = await authFetch.post("/admin", {
-        contractCode: data,
+        contractCode: addCode,
       });
-      dispatch({
-        type: ADD_VALUE,
-        payload: { msg: res.data.msg, data: res.data.data },
-      });
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  const toggleCode = async (id) => {
-    try {
-      const res = await authFetch.post(`/admin/${id}/code`, {});
-      console.log("This is response");
-      console.log(res);
-      dispatch({ type: TOGGLE_CODE, payload: { id, data: res.data.data } });
+      dispatch({ type: ADD_VALUE, payload: res.data.msg });
     } catch (error) {
       console.log(error);
     }
@@ -518,9 +485,7 @@ export const DataProvider = ({ children }) => {
         type: EDIT_SERVICE,
         payload: { frequency, business, treatmentLocation, _id, area },
       });
-    } catch (error) {
-      console.log(error);
-    }
+    } catch (error) {}
   };
 
   const sameDetails = () => {
@@ -640,6 +605,7 @@ export const DataProvider = ({ children }) => {
   };
 
   const createCard = async (dueMonths, value, chemicals) => {
+    const serv = [];
     dispatch({ type: LOADING });
     const home = [
       "1 RK",
@@ -661,7 +627,9 @@ export const DataProvider = ({ children }) => {
         edit,
         cardId,
       } = state;
-      const serv = value.split(",").map((ser) => ser.trim());
+      value.split(",").map((ser) => {
+        return serv.push(ser.trim());
+      });
       if (ratrid === "No" && serv.includes("Rat Rid") && serv.length > 5) {
         return dispatch({ type: CARD_FAIL });
       }
@@ -868,25 +836,12 @@ export const DataProvider = ({ children }) => {
   };
 
   const scheduleMail = async () => {
-    dispatch({ type: LOADING }); // Uncomment if you handle loading in your reducer
     const { feedbackEmails } = state;
     try {
-      const res = await axios.put(
-        "https://cqr1.herokuapp.com/api/feedback/sendMails",
-        feedbackEmails
-      );
+      const res = await axios.put("/api/feedback/sendMails", feedbackEmails);
       dispatch({ type: SCHEDULE_MAIL, payload: res.data });
     } catch (error) {
-      // Extract the error message properly
-      const errorMessage =
-        error.response?.data?.error || // Error message from the server (e.g., { error: 'Message' })
-        error.response?.data?.msg || // Another common error key
-        error.message || // Default Axios error message
-        "An unexpected error occurred"; // Fallback message
-      dispatch({
-        type: FAIL_ALERT,
-        payload: { msg: errorMessage },
-      });
+      console.log(error);
     }
   };
 
@@ -949,7 +904,6 @@ export const DataProvider = ({ children }) => {
     <DataContext.Provider
       value={{
         ...state,
-        customAlert,
         fetchContracts,
         fetchSingleContract,
         fetchSingleCard,
@@ -994,7 +948,6 @@ export const DataProvider = ({ children }) => {
         serviceIntimation,
         setServiceId,
         branchReport,
-        toggleCode,
       }}
     >
       {children}

@@ -1,13 +1,26 @@
-/* eslint-disable react/prop-types */
+import React from "react";
 import { useDataContext } from "../context/data_context";
 
-const InputSelect = ({ label, data, name, value, id, width, w }) => {
+const InputSelect = ({
+  label,
+  data,
+  name,
+  value,
+  id,
+  width,
+  w,
+  hasPlaceholder,
+  placeholderText,
+  required = false,
+}) => {
   const { handleChange } = useDataContext();
 
   return (
     <div className="row mt-2">
       <div className={w ? "col-md-5" : "col-md-4"}>
-        <h4>{label}</h4>
+        <h4>
+          {label} {required && <span style={{ color: "red" }}>*</span>}
+        </h4>
       </div>
       <div className="col-md-7">
         <select
@@ -19,17 +32,16 @@ const InputSelect = ({ label, data, name, value, id, width, w }) => {
           onChange={handleChange}
           style={{ width: width }}
         >
-          {data.map((item) => {
-            // Check if item is an object or a simple value
-            const optionValue = typeof item === "object" ? item.name : item;
-            const optionLabel = typeof item === "object" ? item.name : item;
-
-            return (
-              <option value={optionValue} key={optionValue}>
-                {optionLabel}
-              </option>
-            );
-          })}
+          {hasPlaceholder && (
+            <option value="" disabled>
+              {placeholderText || `-- Select ${label} --`}
+            </option>
+          )}
+          {data.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
         </select>
       </div>
     </div>
