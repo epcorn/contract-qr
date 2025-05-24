@@ -61,9 +61,7 @@ const AddContract = () => {
 
       // Filter duplicate contract codes
       if (item.contractCode) {
-        const label = `${item.contractCode.name} (${
-          item.contractCode.active ? "Active" : "Inactive"
-        })`;
+        const label = `${item.contractCode.name}`;
 
         if (!seenCodes.has(label)) {
           contractCodesList.push(label);
