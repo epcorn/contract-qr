@@ -61,17 +61,34 @@ const getAllContracts = async (req, res) => {
 };
 
 const createContract = async (req, res) => {
-  const { contractNo, type } = req.body;
-  const contractAlreadyExists = await Contract.findOne({ contractNo });
-  if (contractAlreadyExists && type === "NC") {
-    throw new BadRequestError("Contract Number Already Exists");
-  }
+  const { contractNo, type, startDate } = req.body;
 
   try {
+    if (type === "NC") {
+      const contractAlreadyExists = await Contract.findOne({ contractNo });
+      if (contractAlreadyExists) {
+        throw new BadRequestError("Contract Number Already Exists");
+      }
+    }
+
+    if (type === "RC") {
+      const existingContracts = await Contract.find({ contractNo });
+
+      const overlap = existingContracts.some((contract) => {
+        return new Date(startDate) <= new Date(contract.endDate);
+      });
+
+      if (overlap) {
+        throw new BadRequestError(
+          "RC contract overlaps with an existing contract having the same number"
+        );
+      }
+    }
+
     const contract = await Contract.create({ ...req.body });
     res.status(201).json({ contract });
   } catch (error) {
-    res.status(500).json({ msg: error });
+    res.status(500).json({ msg: error.message || "Something went wrong" });
     console.log(error);
   }
 };

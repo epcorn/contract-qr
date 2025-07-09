@@ -16,6 +16,7 @@ const errorHandler = require("./middleware/error-handler");
 const { authenticateUser } = require("./middleware/auth");
 const path = require("path");
 const express = require("express");
+const { allValues } = require("./controllers/adminController");
 
 const app = express();
 
@@ -65,5 +66,6 @@ app.use("/api/feedback", feedbackRouter);
     });
   }
 })();
+
 app.use(errorHandler);
 app.use(notFound);
