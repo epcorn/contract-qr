@@ -16,9 +16,9 @@ const AddContract = () => {
   const { id } = useParams();
   const [same, setSame] = useState(false);
   const [endDate, setEndDate] = useState(null);
+
   const {
     contractNo,
-    billingFrequency,
     startDate,
     createContract,
     contract,
@@ -53,13 +53,11 @@ const AddContract = () => {
     const seenCodes = new Set();
 
     adminList.forEach((item) => {
-      // Filter duplicate sales
       if (item.sales && !seenSales.has(item.sales)) {
         representativeList.push(item.sales);
         seenSales.add(item.sales);
       }
 
-      // Filter duplicate contract codes
       if (item.contractCode) {
         const label = `${item.contractCode.name}`;
 
@@ -147,8 +145,10 @@ const AddContract = () => {
       return;
     }
 
-    if (!contractNo || !startDate || !billingFrequency || !preferred.day) {
-      displayAlert("Please fill in all required fields.");
+    if (!contractNo || !startDate || !preferred.day) {
+      displayAlert(
+        "Please fill in all required fields (Contract No., Start Date, Preferred Day)."
+      );
       return;
     }
 
@@ -173,7 +173,7 @@ const AddContract = () => {
         navigate(`/addcard/${contract}`);
       }, 2000);
     }
-  }, [contractCreated]);
+  }, [contractCreated, navigate, contract]);
 
   return (
     <div className="container">
@@ -187,6 +187,7 @@ const AddContract = () => {
               placeholder="eg: s/124"
               name="contractNo"
               value={contractNo}
+              handleChange={handleChange}
             />
           </div>
           <div className="col-md-1">
@@ -196,7 +197,9 @@ const AddContract = () => {
               aria-label="Default select example"
               name="type"
               value={type}
-              onChange={handleChange}
+              onChange={(e) =>
+                handleChange({ name: e.target.name, value: e.target.value })
+              }
             >
               {typeList.map((data) => (
                 <option value={data} key={data}>
@@ -212,7 +215,9 @@ const AddContract = () => {
               aria-label="Default select example"
               name="company"
               value={company}
-              onChange={handleChange}
+              onChange={(e) =>
+                handleChange({ name: e.target.name, value: e.target.value })
+              }
             >
               {companyNames.map((data) => (
                 <option value={data} key={data}>
@@ -228,7 +233,9 @@ const AddContract = () => {
               aria-label="Default select example"
               name="branch"
               value={branch}
-              onChange={handleChange}
+              onChange={(e) =>
+                handleChange({ name: e.target.name, value: e.target.value })
+              }
             >
               {branchList.map((data) => (
                 <option value={data} key={data}>
@@ -237,7 +244,6 @@ const AddContract = () => {
               ))}
             </select>
           </div>
-
           <div className="col-md-3">
             <InputSelect
               label="Sales"
@@ -247,17 +253,17 @@ const AddContract = () => {
               hasPlaceholder={true}
               placeholderText="-- Select a sales rep --"
               required={true}
+              handleChange={handleChange}
             />
           </div>
-
           <hr className="mt-3" />
-
           <div className="col-md-4">
             <InputRow
               label="Start Date :"
               type="date"
               name="startDate"
               value={startDate}
+              handleChange={handleChange}
             />
           </div>
           <div className="col-md-4">
@@ -267,6 +273,7 @@ const AddContract = () => {
               value={endContract}
               data={endDateList}
               width={180}
+              handleChange={handleChange}
             />
           </div>
           <div className="col-md-4">
@@ -278,40 +285,31 @@ const AddContract = () => {
               hasPlaceholder={true}
               placeholderText="-- Select a code --"
               required={true}
+              handleChange={handleChange}
             />
           </div>
-
           <hr className="mt-3" />
-
           <div className="col-md-4">
             <InputRow
               label="Preferred Day:"
               id="preferred"
               type="text"
-              name="day"
+              name="preferred-day" // <-- UPDATED
               value={day}
+              handleChange={handleChange}
             />
           </div>
           <div className="col-md-4">
             <InputSelect
               label="& Time :"
               id="preferred"
-              name="time"
+              name="preferred-time" // <-- UPDATED
               value={time}
               data={timeList}
+              handleChange={handleChange}
             />
           </div>
-
           <hr className="mt-3" />
-
-          <div className="col-md-6">
-            <InputRow
-              label="Billing Frequency :"
-              type="text"
-              name="billingFrequency"
-              value={billingFrequency}
-            />
-          </div>
           <div className="col-md-6">
             <InputRow
               label="Instructions :"
@@ -319,14 +317,13 @@ const AddContract = () => {
               name="specialInstruction"
               value={specialInstruction}
               placeholder="should be comma separated"
+              handleChange={handleChange}
             />
           </div>
-
           <hr className="mt-3" />
-
           <div className="col-md-6 ">
             <h4 className="text-info text-center mb-3">Bill To Details:</h4>
-            <BillToAddress id="billToAddress" />
+            <BillToAddress id="billToAddress" handleChange={handleChange} />
             <BillContacts />
           </div>
           <div className="col-md-6 ">
@@ -337,10 +334,9 @@ const AddContract = () => {
             >
               Same As Billing Details
             </button>
-            <ShipToAddress id="shipToAddress" />
+            <ShipToAddress id="shipToAddress" handleChange={handleChange} />
             <ShipContacts same={same} />
           </div>
-
           <div className="col-md-2">
             <button
               className="btn btn-primary btn-lg"
@@ -350,11 +346,9 @@ const AddContract = () => {
               New Contract
             </button>
           </div>
-
           <div className="col-md-4">{showAlert && <Alert />}</div>
         </div>
       </form>
-
       <div className="col-md-3">
         {(role === "Sales" || role === "Admin") && (
           <button

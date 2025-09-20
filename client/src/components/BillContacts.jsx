@@ -11,7 +11,7 @@ const BillContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="name"
+          name="billToContact1-name" // <-- UPDATED
           id="billToContact1"
           value={billToContact1.name}
           onChange={handleChange}
@@ -23,7 +23,7 @@ const BillContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="contact"
+          name="billToContact1-contact" // <-- UPDATED
           id="billToContact1"
           value={billToContact1.contact}
           onChange={handleChange}
@@ -35,7 +35,7 @@ const BillContacts = ({ same }) => {
         <input
           type="email"
           className="form-control mb-2"
-          name="email"
+          name="billToContact1-email" // <-- UPDATED
           id="billToContact1"
           value={billToContact1.email}
           onChange={handleChange}
@@ -46,7 +46,7 @@ const BillContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="name"
+          name="billToContact2-name" // <-- UPDATED
           id="billToContact2"
           value={billToContact2.name}
           onChange={handleChange}
@@ -56,7 +56,7 @@ const BillContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="contact"
+          name="billToContact2-contact" // <-- UPDATED
           id="billToContact2"
           value={billToContact2.contact}
           onChange={handleChange}
@@ -66,7 +66,7 @@ const BillContacts = ({ same }) => {
         <input
           type="email"
           className="form-control mb-2"
-          name="email"
+          name="billToContact2-email" // <-- UPDATED
           id="billToContact2"
           value={billToContact2.email}
           onChange={handleChange}
@@ -76,7 +76,7 @@ const BillContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="name"
+          name="billToContact3-name" // <-- UPDATED
           id="billToContact3"
           value={billToContact3.name}
           onChange={handleChange}
@@ -86,7 +86,7 @@ const BillContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="contact"
+          name="billToContact3-contact" // <-- UPDATED
           id="billToContact3"
           value={billToContact3.contact}
           onChange={handleChange}
@@ -96,7 +96,7 @@ const BillContacts = ({ same }) => {
         <input
           type="email"
           className="form-control mb-2"
-          name="email"
+          name="billToContact3-email" // <-- UPDATED
           id="billToContact3"
           value={billToContact3.email}
           onChange={handleChange}

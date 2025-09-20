@@ -28,7 +28,7 @@ const ShipToAddress = ({ id }) => {
             className="form-select"
             aria-label="Default select example"
             id={id}
-            name="prefix"
+            name="shipToAddress-prefix" // <-- UPDATED
             value={prefix}
             onChange={handleChange}
           >
@@ -47,7 +47,7 @@ const ShipToAddress = ({ id }) => {
             type="text"
             placeholder="Full Name"
             id={id}
-            name="name"
+            name="shipToAddress-name" // <-- UPDATED
             value={name}
             onChange={handleChange}
             required
@@ -58,7 +58,7 @@ const ShipToAddress = ({ id }) => {
         label="Address1 :"
         id={id}
         type="text"
-        name="address1"
+        name="shipToAddress-address1" // <-- UPDATED
         placeholder="Building/Office Name"
         value={address1}
       />
@@ -67,7 +67,7 @@ const ShipToAddress = ({ id }) => {
         id={id}
         type="text"
         placeholder="Flat/Office No"
-        name="address2"
+        name="shipToAddress-address2" // <-- UPDATED
         value={address2}
       />
       <InputRow
@@ -75,7 +75,7 @@ const ShipToAddress = ({ id }) => {
         id={id}
         type="text"
         placeholder="Road/Lane Name"
-        name="address3"
+        name="shipToAddress-address3" // <-- UPDATED
         value={address3}
       />
       <InputRow
@@ -83,7 +83,7 @@ const ShipToAddress = ({ id }) => {
         id={id}
         type="text"
         placeholder="Location"
-        name="address4"
+        name="shipToAddress-address4" // <-- UPDATED
         value={address4}
       />
       <InputRow
@@ -91,15 +91,21 @@ const ShipToAddress = ({ id }) => {
         id={id}
         type="text"
         placeholder="Landmark"
-        name="nearBy"
+        name="shipToAddress-nearBy" // <-- UPDATED
         value={nearBy}
       />
-      <InputRow label="City :" id={id} type="text" name="city" value={city} />
+      <InputRow
+        label="City :"
+        id={id}
+        type="text"
+        name="shipToAddress-city" // <-- UPDATED
+        value={city}
+      />
       <InputRow
         label="Pincode :"
         id={id}
         type="number"
-        name="pincode"
+        name="shipToAddress-pincode" // <-- UPDATED
         value={pincode}
       />
     </div>

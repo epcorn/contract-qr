@@ -54,6 +54,12 @@ import {
   SERVICE_INTIMATION_FAIL,
   BRANCH_REPORT,
   BRANCH_REPORT_FAIL,
+  ADD_MULTI_BILLING_ENTRY,
+  UPDATE_MULTI_BILLING_ENTRY,
+  REMOVE_MULTI_BILLING_ENTRY,
+  SET_BILLING_MONTHS,
+  FETCH_SERVICES_FOR_CONTRACT,
+  INITIALIZE_MULTI_BILLING,
 } from "./action";
 
 const DataContext = createContext();
@@ -71,7 +77,7 @@ export const initialState = {
   token: token || null,
   role: role || null,
   contracts: [],
-  singleContract: [],
+  singleContract: {},
   card: [],
   contractCreated: false,
   contractNo: "",
@@ -95,19 +101,16 @@ export const initialState = {
     contact: "(M)/(T)",
     email: "",
   },
-
   billToContact2: {
     name: "",
     contact: "",
     email: "",
   },
-
   billToContact3: {
     name: "",
     contact: "",
     email: "",
   },
-
   shipToAddress: {
     prefix: "Mr",
     name: "",
@@ -119,26 +122,22 @@ export const initialState = {
     city: "",
     pincode: "",
   },
-
   shipToContact1: {
     name: "Mr./Ms.",
     contact: "(M)/(T)",
     email: "",
   },
-
   shipToContact2: {
     name: "",
     contact: "",
     email: "",
   },
-
   shipToContact3: {
     name: "",
     contact: "",
     email: "",
   },
   startDate: new Date().toISOString().slice(0, 10),
-  billingFrequency: "",
   frequency: "Daily",
   service: [],
   endContract: "1 Year",
@@ -185,6 +184,15 @@ export const initialState = {
   serviceId: "",
   branch: "MUM - 1",
   contractCode: "",
+  billingType: "single",
+  singleBillingConfig: {
+    frequencyType: "",
+    calculatedBillingMonths: [],
+    manualDescription: "",
+    selectedManualMonths: [],
+  },
+  multiBillingConfig: [],
+  servicesForContract: [],
 };
 
 export const DataProvider = ({ children }) => {
@@ -196,7 +204,9 @@ export const DataProvider = ({ children }) => {
 
   authFetch.interceptors.request.use(
     (config) => {
-      config.headers.common["Authorization"] = `Bearer ${state.token}`;
+      if (state.token) {
+        config.headers.common["Authorization"] = `Bearer ${state.token}`;
+      }
       return config;
     },
     (error) => {
@@ -244,7 +254,7 @@ export const DataProvider = ({ children }) => {
       const res = await authFetch.post("/register", currentUser);
       const { name, role, token, msg } = res.data;
       dispatch({ type: REGISTER_SUCCESS, payload: { name, role, token, msg } });
-      // addLocalStorage({ name, token, role });
+      addLocalStorage({ name, token, role });
     } catch (error) {
       dispatch({
         type: REGISTER_FAIL,
@@ -259,8 +269,11 @@ export const DataProvider = ({ children }) => {
     try {
       const res = await axios.post("/api/login", currentUser);
       const { name, token, role } = res.data;
+      localStorage.setItem("user", name);
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", role);
+
       dispatch({ type: LOGIN_SUCCESS, payload: { name, token, role } });
-      addLocalStorage({ name, token, role });
     } catch (error) {
       dispatch({
         type: LOGIN_FAIL,
@@ -399,6 +412,34 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const fetchServicesForContract = async (id) => {
+    dispatch({ type: LOADING });
+    try {
+      const contractNumber = state.singleContract.contractNo;
+      if (!contractNumber) {
+        throw new Error("Contract number is not available.");
+      }
+
+      const res = await authFetch.get(
+        `/billing-services?search=${contractNumber}`
+      );
+
+      const services = res.data.services;
+
+      dispatch({
+        type: FETCH_SERVICES_FOR_CONTRACT,
+        payload: services,
+      });
+
+      dispatch({
+        type: INITIALIZE_MULTI_BILLING,
+        payload: services,
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   const fetchSingleContract = async (id) => {
     dispatch({ type: LOADING });
     try {
@@ -506,13 +547,15 @@ export const DataProvider = ({ children }) => {
         billToContact2,
         billToContact3,
         startDate,
-        billingFrequency,
         preferred,
         specialInstruction,
         sales,
         company,
         branch,
         contractCode,
+        billingType,
+        singleBillingConfig,
+        multiBillingConfig,
       } = state;
       const upper = contractNo[0].toUpperCase() + contractNo.slice(1);
       const instructions = [];
@@ -535,11 +578,13 @@ export const DataProvider = ({ children }) => {
         shipToAddress,
         startDate,
         endDate: last,
-        billingFrequency,
         preferred,
         specialInstruction: instructions,
         branch,
         contractCode,
+        billingType,
+        singleBillingConfig,
+        multiBillingConfig,
       });
       const contractId = res.data.contract._id;
       dispatch({
@@ -568,13 +613,15 @@ export const DataProvider = ({ children }) => {
       billToContact1,
       billToContact2,
       billToContact3,
-      billingFrequency,
       preferred,
       startDate,
       sales,
       company,
       branch,
       contractCode,
+      billingType,
+      singleBillingConfig,
+      multiBillingConfig,
     } = state;
     try {
       const res = await authFetch.patch(`/contracts/${id}`, {
@@ -589,12 +636,14 @@ export const DataProvider = ({ children }) => {
         billToContact1,
         billToContact2,
         billToContact3,
-        billingFrequency,
         preferred,
         startDate,
         endDate,
         branch,
         contractCode,
+        billingType,
+        singleBillingConfig,
+        multiBillingConfig,
       });
       dispatch({ type: UPDATE_CONTRACT, payload: res.data });
       dispatch({ type: CLEAR_VALUES });
@@ -659,7 +708,6 @@ export const DataProvider = ({ children }) => {
         area: home.includes(business) ? business : `${area} Sq.Ft`,
       });
       dispatch({ type: CREATE_CARD });
-      // dispatch({ type: CLEAR_VALUES });
     } catch (error) {
       console.log(error);
     }
@@ -718,21 +766,10 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  // const feedback = async ({ formValue, id }) => {
-  //   dispatch({ type: LOADING });
-  //   try {
-  //     await axios.post(`/api/feedback/${id}`, formValue);
-  //     // dispatch({ type: FEEDBACK, payload: res.data });
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // };
-
   const generateReport = async (id) => {
     dispatch({ type: LOADING });
     try {
       const res = await authFetch.get(`/service/report/${id}`);
-      // saveAs(res.data.msg, "Service Report");
       dispatch({ type: SERVICE_REPORT, payload: res.data.msg });
     } catch (error) {
       console.log(error);
@@ -743,15 +780,76 @@ export const DataProvider = ({ children }) => {
     dispatch({ type: CLOSE_MODAL });
   };
 
-  const handleChange = (e) => {
-    let name = e.target.name;
-    let id = e.target.id;
-    let value = e.target.value;
-    if (id === "ContractNumber") {
-      value = e.target.value.replace(/[^\w-/]/gi, "");
+  const handleChange = (eOrObj, extra = {}) => {
+    let name, value, index, id;
+
+    if (eOrObj?.target) {
+      ({ name, value } = eOrObj.target);
+      ({ index, id } = extra);
+    } else {
+      ({ name, value, index, id } = eOrObj);
     }
 
-    dispatch({ type: HANDLE_CHANGE, payload: { name, value, id } });
+    if (id === "singleBillingConfig") {
+      const newValue = { ...state.singleBillingConfig, [name]: value };
+      dispatch({
+        type: HANDLE_CHANGE,
+        payload: { name: "singleBillingConfig", value: newValue },
+      });
+      return;
+    }
+
+    // UPDATED LOGIC HERE
+    if (id === "multiBillingConfig") {
+      const { startDate, singleContract } = state;
+      // IMPORTANT: Make sure singleContract and its endDate exist
+      const endDate = singleContract ? singleContract.endDate : undefined;
+
+      // --- ADD THESE LINES ---
+      console.log("2. Context: Preparing to dispatch HANDLE_CHANGE.");
+      console.log("   > Payload will be:", {
+        index,
+        name,
+        value,
+        id,
+        startDate,
+        endDate,
+      });
+      if (!startDate || !endDate) {
+        console.error(
+          "   > DEBUG ERROR: Start Date or End Date is missing or invalid!"
+        );
+      }
+      // --- END OF ADDED LINES ---
+
+      dispatch({
+        type: HANDLE_CHANGE,
+        payload: { index, name, value, id, startDate, endDate },
+      });
+      return;
+    }
+
+    if (name?.includes("-")) {
+      const [parent, child] = name.split("-");
+      const newValue = {
+        ...state[parent],
+        [child]: value,
+      };
+      dispatch({
+        type: HANDLE_CHANGE,
+        payload: { name: parent, value: newValue },
+      });
+    } else {
+      if (name === "contractNo") {
+        const sanitizedValue = value.replace(/[^\w-/]/gi, "");
+        dispatch({
+          type: HANDLE_CHANGE,
+          payload: { name, value: sanitizedValue },
+        });
+      } else {
+        dispatch({ type: HANDLE_CHANGE, payload: { name, value } });
+      }
+    }
   };
 
   const setServiceId = ({ name, value }) => {
@@ -845,15 +943,6 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  // const scheduleMail1 = async () => {
-  //   try {
-  //     const res = await axios.put("/api/feedback/schedule");
-  //     dispatch({ type: SCHEDULE_MAIL, payload: res.data });
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // };
-
   const newFeedback = async (id, formValue) => {
     try {
       const res = await axios.post(`/api/feedback/${id}`, formValue);
@@ -900,6 +989,33 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const addMultiBillingEntry = () => {
+    dispatch({ type: ADD_MULTI_BILLING_ENTRY });
+  };
+
+  const updateMultiBillingEntry = (index, field, value) => {
+    dispatch({
+      type: UPDATE_MULTI_BILLING_ENTRY,
+      payload: { index, field, value },
+    });
+  };
+
+  const removeMultiBillingEntry = (index) => {
+    dispatch({ type: REMOVE_MULTI_BILLING_ENTRY, payload: { index } });
+  };
+
+  const setBillingMonths = (
+    configType,
+    monthsArray,
+    index = null,
+    monthType = "calculated"
+  ) => {
+    dispatch({
+      type: SET_BILLING_MONTHS,
+      payload: { configType, monthsArray, index, monthType },
+    });
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -921,6 +1037,7 @@ export const DataProvider = ({ children }) => {
         createCards,
         clearValues,
         fetchServices,
+        fetchServicesForContract,
         fetchAllUsers,
         removeUser,
         renewContract,
@@ -948,6 +1065,10 @@ export const DataProvider = ({ children }) => {
         serviceIntimation,
         setServiceId,
         branchReport,
+        addMultiBillingEntry,
+        updateMultiBillingEntry,
+        removeMultiBillingEntry,
+        setBillingMonths,
       }}
     >
       {children}

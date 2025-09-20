@@ -51,9 +51,16 @@ import {
   BRANCH_REPORT_FAIL,
   TOGGLE_CODE,
   CUSTOM_ALERT,
+  ADD_MULTI_BILLING_ENTRY,
+  UPDATE_MULTI_BILLING_ENTRY,
+  REMOVE_MULTI_BILLING_ENTRY,
+  SET_BILLING_MONTHS,
+  FETCH_SERVICES_FOR_CONTRACT,
+  INITIALIZE_MULTI_BILLING,
 } from "./action";
-
 import { initialState } from "./data_context";
+// IMPORT THE CALCULATION FUNCTION
+import { calculateBillingMonths } from "../../utils/billingUtils";
 
 const data_reducer = (state, action) => {
   switch (action.type) {
@@ -91,9 +98,6 @@ const data_reducer = (state, action) => {
       return {
         ...state,
         loading: false,
-        // token: action.payload.token,
-        // user: action.payload.name,
-        // role: action.payload.role,
         alertText: action.payload.msg,
         alertType: "success",
         showAlert: true,
@@ -167,12 +171,140 @@ const data_reducer = (state, action) => {
         allServices: action.payload,
       };
     }
-    case FETCH_CONTRACT: {
+    case FETCH_SERVICES_FOR_CONTRACT: {
       return {
         ...state,
         loading: false,
-        singleContract: action.payload.contract,
+        servicesForContract: action.payload,
+      };
+    }
+    case INITIALIZE_MULTI_BILLING: {
+      const services = action.payload || [];
+      const newMultiBillingConfig = services.map((service) => ({
+        serviceId: service._id,
+        serviceName: service.service,
+        frequencyType: "",
+        calculatedBillingMonths: [],
+        manualDescription: "",
+        selectedManualMonths: [],
+      }));
+      return {
+        ...state,
+        multiBillingConfig: newMultiBillingConfig,
+      };
+    }
+    case SET_BILLING_MONTHS: {
+      const { configType, monthsArray, index, monthType } = action.payload;
+
+      if (configType === "single") {
+        const keyToUpdate =
+          monthType === "manual"
+            ? "selectedManualMonths"
+            : "calculatedBillingMonths";
+        const keyToClear =
+          monthType === "manual"
+            ? "calculatedBillingMonths"
+            : "selectedManualMonths";
+        return {
+          ...state,
+          singleBillingConfig: {
+            ...state.singleBillingConfig,
+            [keyToUpdate]: monthsArray,
+            [keyToClear]: [],
+          },
+        };
+      }
+
+      if (configType === "multi" && index !== null) {
+        const keyToUpdate =
+          monthType === "manual"
+            ? "selectedManualMonths"
+            : "calculatedBillingMonths";
+        const keyToClear =
+          monthType === "manual"
+            ? "calculatedBillingMonths"
+            : "selectedManualMonths";
+        const newMultiConfig = state.multiBillingConfig.map((item, i) => {
+          if (i === index) {
+            return {
+              ...item,
+              [keyToUpdate]: monthsArray,
+              [keyToClear]: [],
+            };
+          }
+          return item;
+        });
+        return { ...state, multiBillingConfig: newMultiConfig };
+      }
+
+      return state;
+    }
+    case FETCH_CONTRACT: {
+      const contract = action.payload.contract;
+      const initialBillingType =
+        contract.billingType || initialState.billingType;
+      const initialSingleBillingConfig = {
+        ...initialState.singleBillingConfig,
+        ...(contract.singleBillingConfig || {}),
+        calculatedBillingMonths: Array.isArray(
+          contract.singleBillingConfig?.calculatedBillingMonths
+        )
+          ? contract.singleBillingConfig.calculatedBillingMonths
+          : [],
+        selectedManualMonths: Array.isArray(
+          contract.singleBillingConfig?.selectedManualMonths
+        )
+          ? contract.singleBillingConfig.selectedManualMonths
+          : [],
+      };
+
+      const initialMultiBillingConfig = Array.isArray(
+        contract.multiBillingConfig
+      )
+        ? contract.multiBillingConfig.map((config) => ({
+            ...initialState.multiBillingConfig[0],
+            ...config,
+            serviceCardNumber: config.serviceCardNumber
+              ? String(config.serviceCardNumber)
+              : "",
+            calculatedBillingMonths: Array.isArray(
+              config.calculatedBillingMonths
+            )
+              ? config.calculatedBillingMonths
+              : [],
+            selectedManualMonths: Array.isArray(config.selectedManualMonths)
+              ? config.selectedManualMonths
+              : [],
+          }))
+        : initialState.multiBillingConfig;
+
+      return {
+        ...state,
+        loading: false,
+        singleContract: contract,
         contract: action.payload.id,
+        billToAddress: contract.billToAddress || initialState.billToAddress,
+        billToContact1: contract.billToContact1 || initialState.billToContact1,
+        billToContact2: contract.billToContact2 || initialState.billToContact2,
+        billToContact3: contract.billToContact3 || initialState.billToContact3,
+        shipToAddress: contract.shipToAddress || initialState.shipToAddress,
+        shipToContact1: contract.shipToContact1 || initialState.shipToContact1,
+        shipToContact2: contract.shipToContact2 || initialState.shipToContact2,
+        shipToContact3: contract.shipToContact3 || initialState.shipToContact3,
+        preferred: contract.preferred || initialState.preferred,
+        sales: contract.sales || initialState.sales,
+        company: contract.company || initialState.company,
+        branch: contract.branch || initialState.branch,
+        contractCode: contract.contractCode || initialState.contractCode,
+        specialInstruction: Array.isArray(contract.specialInstruction)
+          ? contract.specialInstruction.join(", ")
+          : contract.specialInstruction || "",
+        startDate: contract.startDate
+          ? contract.startDate.slice(0, 10)
+          : initialState.startDate,
+        billingType: initialBillingType,
+        singleBillingConfig: initialSingleBillingConfig,
+        multiBillingConfig: initialMultiBillingConfig,
       };
     }
     case FETCH_CARD: {
@@ -182,7 +314,6 @@ const data_reducer = (state, action) => {
         card: action.payload,
       };
     }
-
     case FETCH_USERS: {
       return {
         ...state,
@@ -190,7 +321,6 @@ const data_reducer = (state, action) => {
         users: action.payload,
       };
     }
-
     case DELETE_USER: {
       return {
         ...state,
@@ -202,79 +332,81 @@ const data_reducer = (state, action) => {
       };
     }
     case HANDLE_CHANGE: {
-      const { name, value, id } = action.payload;
-      if (id === "billToAddress") {
+      const { name, value, id, index, startDate, endDate } = action.payload;
+
+      if (name === "billingType") {
         return {
           ...state,
-          billToAddress: { ...state.billToAddress, [name]: value },
+          billingType: value,
+          singleBillingConfig: { ...initialState.singleBillingConfig },
+          multiBillingConfig: initialState.multiBillingConfig,
         };
       }
-      if (id === "shipToAddress") {
+
+      if (id === "singleBillingConfig") {
         return {
           ...state,
-          shipToAddress: { ...state.shipToAddress, [name]: value },
+          singleBillingConfig: value,
         };
       }
-      if (id === "billToContact") {
+
+      if (id === "multiBillingConfig" && typeof index === "number") {
+        // --- ADD THIS LINE ---
+        console.log("4. Reducer: Matched multiBillingConfig logic.");
+
+        const newMultiBillingConfig = [...state.multiBillingConfig];
+        const currentEntry = newMultiBillingConfig[index];
+
+        if (currentEntry) {
+          const updatedEntry = {
+            ...currentEntry,
+            [name]: value,
+          };
+
+          if (name === "frequencyType") {
+            // --- ADD THESE LINES ---
+            console.log("5. Reducer: Recalculating months with:", {
+              startDate,
+              endDate,
+              newFrequency: value,
+            });
+            const calculated = calculateBillingMonths(
+              new Date(startDate),
+              value,
+              endDate
+            );
+            console.log("6. Reducer: Calculation result is:", calculated);
+            // --- END OF ADDED LINES ---
+
+            if (value && value !== "Manual" && value !== "Bill After Job") {
+              updatedEntry.calculatedBillingMonths = calculated;
+              updatedEntry.selectedManualMonths = [];
+            } else {
+              updatedEntry.calculatedBillingMonths = [];
+            }
+          }
+
+          newMultiBillingConfig[index] = updatedEntry;
+        }
+
         return {
           ...state,
-          billToContact: { ...state.billToContact, [name]: value },
+          multiBillingConfig: newMultiBillingConfig,
         };
       }
-      if (id === "shipToContact") {
+
+      if (name?.includes("-")) {
+        const [parent, child] = name.split("-");
+        const newValue = {
+          ...state[parent],
+          [child]: value,
+        };
         return {
           ...state,
-          shipToContact: { ...state.shipToContact, [name]: value },
+          [parent]: newValue,
         };
       }
-      if (id === "preferred") {
-        return {
-          ...state,
-          preferred: { ...state.preferred, [name]: value },
-        };
-      }
-      if (id === "billToContact1") {
-        return {
-          ...state,
-          billToContact1: { ...state.billToContact1, [name]: value },
-        };
-      }
-      if (id === "billToContact2") {
-        return {
-          ...state,
-          billToContact2: { ...state.billToContact2, [name]: value },
-        };
-      }
-      if (id === "billToContact3") {
-        return {
-          ...state,
-          billToContact3: { ...state.billToContact3, [name]: value },
-        };
-      }
-      if (id === "shipToContact1") {
-        return {
-          ...state,
-          shipToContact1: { ...state.shipToContact1, [name]: value },
-        };
-      }
-      if (id === "shipToContact2") {
-        return {
-          ...state,
-          shipToContact2: { ...state.shipToContact2, [name]: value },
-        };
-      }
-      if (id === "serviceChemicals") {
-        return {
-          ...state,
-          serviceChemicals: { ...state.serviceChemicals, [name]: value },
-        };
-      }
-      if (id === "shipToContact3") {
-        return {
-          ...state,
-          shipToContact3: { ...state.shipToContact3, [name]: value },
-        };
-      }
+
       return { ...state, [name]: value };
     }
     case SAME_DETAILS: {
@@ -382,79 +514,67 @@ const data_reducer = (state, action) => {
     }
 
     case COPY_CONTRACT: {
+      const singleContract = state.singleContract;
       return {
         ...state,
         loading: false,
-        contractNo: state.singleContract.contractNo,
-        type: state.singleContract.type,
-        sales: state.singleContract.sales,
-        startDate: state.singleContract.startDate.slice(0, 10),
-        business: state.singleContract.business,
+        contractNo: singleContract.contractNo,
+        type: singleContract.type,
+        sales: singleContract.sales,
+        startDate: singleContract.startDate.slice(0, 10),
+        business: singleContract.business,
         preferred: {
-          day: state.singleContract.preferred.day,
-          time: state.singleContract.preferred.time,
+          day: singleContract.preferred?.day || "",
+          time: singleContract.preferred?.time || "10 am - 12 pm",
         },
-        branch: state.singleContract.branch,
-        contractCode: state.singleContract.contractCode,
-        area: state.singleContract.area,
-        billingFrequency: state.singleContract.billingFrequency,
-        specialInstruction: state.singleContract.specialInstruction.toString(),
-        billToAddress: {
-          prefix: state.singleContract.billToAddress.prefix,
-          name: state.singleContract.billToAddress.name,
-          address1: state.singleContract.billToAddress.address1,
-          address2: state.singleContract.billToAddress.address2,
-          address3: state.singleContract.billToAddress.address3,
-          address4: state.singleContract.billToAddress.address4,
-          nearBy: state.singleContract.billToAddress.nearBy,
-          city: state.singleContract.billToAddress.city,
-          pincode: state.singleContract.billToAddress.pincode,
+        branch: singleContract.branch,
+        contractCode: singleContract.contractCode,
+        area: singleContract.area,
+        billingType: singleContract.billingType || initialState.billingType,
+        singleBillingConfig: {
+          ...initialState.singleBillingConfig,
+          ...(singleContract.singleBillingConfig || {}),
+          calculatedBillingMonths: Array.isArray(
+            singleContract.singleBillingConfig?.calculatedBillingMonths
+          )
+            ? [...singleContract.singleBillingConfig.calculatedBillingMonths]
+            : [],
+          selectedManualMonths: Array.isArray(
+            singleContract.singleBillingConfig?.selectedManualMonths
+          )
+            ? [...singleContract.singleBillingConfig.selectedManualMonths]
+            : [],
         },
-        billToContact1: {
-          name: state.singleContract.billToContact1.name,
-          contact: state.singleContract.billToContact1.contact,
-          email: state.singleContract.billToContact1.email,
-        },
+        multiBillingConfig: Array.isArray(singleContract.multiBillingConfig)
+          ? singleContract.multiBillingConfig.map((config) => ({
+              ...initialState.multiBillingConfig[0],
+              ...config,
+              serviceCardNumber: config.serviceCardNumber
+                ? String(config.serviceCardNumber)
+                : "",
+              calculatedBillingMonths: Array.isArray(
+                config.calculatedBillingMonths
+              )
+                ? [...config.calculatedBillingMonths]
+                : [],
+              selectedManualMonths: Array.isArray(config.selectedManualMonths)
+                ? [...config.selectedManualMonths]
+                : [],
+            }))
+          : initialState.multiBillingConfig,
 
-        billToContact2: {
-          name: state.singleContract.billToContact2.name,
-          contact: state.singleContract.billToContact2.contact,
-          email: state.singleContract.billToContact2.email,
-        },
+        specialInstruction: Array.isArray(singleContract.specialInstruction)
+          ? singleContract.specialInstruction.join(", ")
+          : singleContract.specialInstruction || "",
 
-        billToContact3: {
-          name: state.singleContract.billToContact3.name,
-          contact: state.singleContract.billToContact3.contact,
-          email: state.singleContract.billToContact3.email,
-        },
-        shipToAddress: {
-          prefix: state.singleContract.shipToAddress.prefix,
-          name: state.singleContract.shipToAddress.name,
-          address1: state.singleContract.shipToAddress.address1,
-          address2: state.singleContract.shipToAddress.address2,
-          address3: state.singleContract.shipToAddress.address3,
-          address4: state.singleContract.shipToAddress.address4,
-          nearBy: state.singleContract.shipToAddress.nearBy,
-          city: state.singleContract.shipToAddress.city,
-          pincode: state.singleContract.shipToAddress.pincode,
-        },
-        shipToContact1: {
-          name: state.singleContract.shipToContact1.name,
-          contact: state.singleContract.shipToContact1.contact,
-          email: state.singleContract.shipToContact1.email,
-        },
-
-        shipToContact2: {
-          name: state.singleContract.shipToContact2.name,
-          contact: state.singleContract.shipToContact2.contact,
-          email: state.singleContract.shipToContact2.email,
-        },
-
-        shipToContact3: {
-          name: state.singleContract.shipToContact3.name,
-          contact: state.singleContract.shipToContact3.contact,
-          email: state.singleContract.shipToContact3.email,
-        },
+        billToAddress: { ...singleContract.billToAddress },
+        billToContact1: { ...singleContract.billToContact1 },
+        billToContact2: { ...singleContract.billToContact2 },
+        billToContact3: { ...singleContract.billToContact3 },
+        shipToAddress: { ...singleContract.shipToAddress },
+        shipToContact1: { ...singleContract.shipToContact1 },
+        shipToContact2: { ...singleContract.shipToContact2 },
+        shipToContact3: { ...singleContract.shipToContact3 },
       };
     }
 
@@ -474,67 +594,17 @@ const data_reducer = (state, action) => {
         area: "",
         endContract: "1 Year",
         specialInstruction: "",
-        billingFrequency: "",
         renew: false,
-        billToAddress: {
-          prefix: "Mr",
-          name: "",
-          address1: "",
-          address2: "",
-          address3: "",
-          address4: "",
-          nearBy: "",
-          city: "",
-          pincode: "",
-        },
-        shipToAddress: {
-          prefix: "Mr",
-          name: "",
-          address1: "",
-          address2: "",
-          address3: "",
-          address4: "",
-          nearBy: "",
-          city: "",
-          pincode: "",
-        },
-        billToContact1: {
-          name: "Mr./Ms.",
-          contact: "(M)/(T)",
-          email: "",
-        },
-
-        billToContact2: {
-          name: "",
-          contact: "",
-          email: "",
-        },
-
-        billToContact3: {
-          name: "",
-          contact: "",
-          email: "",
-        },
-
-        shipToContact1: {
-          name: "Mr./Ms.",
-          contact: "(M)/(T)",
-          email: "",
-        },
-
-        shipToContact2: {
-          name: "",
-          contact: "",
-          email: "",
-        },
-
-        shipToContact3: {
-          name: "",
-          contact: "",
-          email: "",
-        },
+        billToAddress: { ...initialState.billToAddress },
+        shipToAddress: { ...initialState.shipToAddress },
+        billToContact1: { ...initialState.billToContact1 },
+        billToContact2: { ...initialState.billToContact2 },
+        billToContact3: { ...initialState.billToContact3 },
+        shipToContact1: { ...initialState.shipToContact1 },
+        shipToContact2: { ...initialState.shipToContact2 },
+        shipToContact3: { ...initialState.shipToContact3 },
         startDate: new Date().toISOString().slice(0, 10),
-        preferred: { day: "", time: "10 am - 12 pm" },
+        preferred: { ...initialState.preferred },
         contractCreated: false,
         search: "",
         searchSD: "",
@@ -542,6 +612,9 @@ const data_reducer = (state, action) => {
         del: false,
         branch: "MUM - 1",
         contractCode: "",
+        billingType: initialState.billingType,
+        singleBillingConfig: { ...initialState.singleBillingConfig },
+        multiBillingConfig: initialState.multiBillingConfig,
       };
     }
     case UPDATE_CONTRACT: {
@@ -605,8 +678,6 @@ const data_reducer = (state, action) => {
       };
     }
     case TOGGLE_CODE: {
-      console.log("payload");
-      console.log(action.payload);
       return {
         ...state,
         adminList: state.adminList.map((item) =>
@@ -757,6 +828,47 @@ const data_reducer = (state, action) => {
         alertText: action.payload.msg,
         alertType: "danger",
         showAlert: true,
+      };
+    }
+    case ADD_MULTI_BILLING_ENTRY: {
+      return {
+        ...state,
+        multiBillingConfig: [
+          ...state.multiBillingConfig,
+          {
+            serviceCardNumber: "",
+            frequencyType: "",
+            calculatedBillingMonths: [],
+            manualDescription: "",
+            selectedManualMonths: [],
+          },
+        ],
+      };
+    }
+
+    case UPDATE_MULTI_BILLING_ENTRY: {
+      const { index, field, value } = action.payload;
+      const newMultiBillingConfig = [...state.multiBillingConfig];
+      if (newMultiBillingConfig[index]) {
+        newMultiBillingConfig[index] = {
+          ...newMultiBillingConfig[index],
+          [field]: value,
+        };
+      }
+      return {
+        ...state,
+        multiBillingConfig: newMultiBillingConfig,
+      };
+    }
+
+    case REMOVE_MULTI_BILLING_ENTRY: {
+      const { index } = action.payload;
+      const newMultiBillingConfig = state.multiBillingConfig.filter(
+        (_, i) => i !== index
+      );
+      return {
+        ...state,
+        multiBillingConfig: newMultiBillingConfig,
       };
     }
 

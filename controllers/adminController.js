@@ -100,31 +100,6 @@ const contractServices = async (req, res) => {
       .populate("services");
     if (!contracT) return res.status(404).json({ msg: "No Contract Found" });
 
-    let billEmail = [],
-      shipEmail = [];
-    if (contracT.billToContact1.email)
-      billEmail.push(contracT.billToContact1.email);
-    if (contracT.billToContact2.email)
-      billEmail.push(contracT.billToContact2.email);
-    if (contracT.billToContact3.email)
-      billEmail.push(contracT.billToContact3.email);
-    if (contracT.shipToContact1.email)
-      shipEmail.push(contracT.shipToContact1.email);
-    if (contracT.shipToContact2.email)
-      shipEmail.push(contracT.shipToContact2.email);
-    if (contracT.shipToContact3.email)
-      shipEmail.push(contracT.shipToContact3.email);
-
-    const details = {
-      number: contracT.contractNo,
-      billToName: contracT.billToAddress.name,
-      billToAddress: `${contracT.billToAddress.address1},${contracT.billToAddress.address2},${contracT.billToAddress.address3},${contracT.billToAddress.address4},${contracT.billToAddress.nearBy},${contracT.billToAddress.city},${contracT.billToAddress.pincode}`,
-      billToEmails: billEmail,
-      shipToName: contracT.shipToAddress.name,
-      shipToAddress: `${contracT.shipToAddress.address1},${contracT.shipToAddress.address2},${contracT.shipToAddress.address3},${contracT.shipToAddress.address4},${contracT.shipToAddress.nearBy},${contracT.shipToAddress.city},${contracT.shipToAddress.pincode}`,
-      shipToEmails: shipEmail,
-    };
-
     const serviceArrays = contracT.services.map(
       ({ _id, service, ...rest }) => ({ _id, service })
     );
@@ -139,11 +114,33 @@ const contractServices = async (req, res) => {
     );
     const output = newServices.flat(2);
 
-    res.status(200).json({ details, services: output });
+    res.status(200).json({ details: {}, services: output });
   } catch (error) {
     console.log(error);
+    res.status(500).json({ msg: "Server Error", error: error.message });
   }
 };
+
+// --- NEW, DEDICATED FUNCTION FOR THE BILLING PAGE ---
+const getServicesForBilling = async (req, res) => {
+  const { search } = req.query;
+  try {
+    const contract = await Contract.findOne({ contractNo: search }).populate(
+      "services"
+    );
+
+    if (!contract) {
+      return res.status(404).json({ msg: "No Contract Found" });
+    }
+
+    // Simply send the array of populated services back.
+    res.status(200).json({ services: contract.services });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ msg: "Server Error", error: error.message });
+  }
+};
+// --- END OF NEW FUNCTION ---
 
 const createServiceReport = async (req, res) => {
   const {
@@ -193,6 +190,7 @@ module.exports = {
   serviceCards,
   contractDetails,
   contractServices,
+  getServicesForBilling, // <-- EXPORT THE NEW FUNCTION
   createServiceReport,
   toggleCode,
 };

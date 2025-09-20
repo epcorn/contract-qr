@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+// src/components/AddCard.js
+
+import React, { useEffect, useState } from "react";
 import { useDataContext } from "../context/data_context";
 import { InputSelect, Alert, Loading, InputRow } from ".";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import moment from "moment";
 import MultiSelect from "react-multiple-select-dropdown-lite";
 import "react-multiple-select-dropdown-lite/dist/index.css";
@@ -13,6 +15,8 @@ const AddCard = () => {
   const [chemicals, setChemicals] = useState([]);
   const [isSubmiting, setIsSubmiting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+
+  const navigate = useNavigate();
 
   const handleOnchange = (val) => {
     setValue(val);
@@ -171,27 +175,23 @@ const AddCard = () => {
   };
 
   useEffect(() => {
-    fetchSingleContract(id);
-
-    // eslint-disable-next-line
+    fetchSingleContract(id); // eslint-disable-next-line
   }, [id, add, del]);
 
   useEffect(() => {
     if ((startDate, endDate)) {
       dueRange(startDate, endDate);
-    }
-    // eslint-disable-next-line
+    } // eslint-disable-next-line
   }, [startDate, frequency]);
 
   useEffect(() => {
     allValues();
-    addChemicals();
-    // eslint-disable-next-line
+    addChemicals(); // eslint-disable-next-line
   }, [value]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmiting || loading) return; // Prevent multiple submissions
+    if (isSubmiting || loading) return;
 
     setIsSubmiting(true);
     try {
@@ -212,9 +212,19 @@ const AddCard = () => {
       await createCards(id);
       setAdd(!add);
       displayAlert();
+      navigate(`/add-billing/${id}`);
     } catch (error) {
       setIsSubmiting(error);
     } finally {
+      /*
+      
+                                 save contract ,  create cards  add billing 
+                                 when saving billing configuration is clicked so 
+                                 should backend calc the months or frontend
+                                 also we have to pass start date from create contract page
+                                 to saving billing configuration.
+
+                                 */
       setIsSubmiting(false);
     }
   };
@@ -228,27 +238,39 @@ const AddCard = () => {
 
   return (
     <div className="container my-3">
+           {" "}
       <div className="row g-4">
+               {" "}
         <div className="col-md-4">
-          <h4>{`Contract Number: ${contractNo}`}</h4>
+                    <h4>{`Contract Number: ${contractNo}`}</h4>       {" "}
         </div>
+               {" "}
         <div className="col-md-4">
-          <h4>{`Start Date: ${moment(startDate).format("DD/MM/YYYY")}`}</h4>
+                   {" "}
+          <h4>{`Start Date: ${moment(startDate).format("DD/MM/YYYY")}`}</h4>   
+             {" "}
         </div>
+               {" "}
         <div className="col-md-4">
-          <h4>{`End Date: ${moment(endDate).format("DD/MM/YYYY")}`}</h4>
+                   {" "}
+          <h4>{`End Date: ${moment(endDate).format("DD/MM/YYYY")}`}</h4>       {" "}
         </div>
-        <hr />
+                <hr />       {" "}
         <table className="table table-striped table-bordered border-dark ">
+                   {" "}
           <thead>
+                       {" "}
             <tr>
-              <th>No</th>
-              <th className="text-center">Services</th>
-              <th className="text-center">Frequency</th>
-              <th className="text-center">Delete</th>
+                            <th>No</th>             {" "}
+              <th className="text-center">Services</th>             {" "}
+              <th className="text-center">Frequency</th>             {" "}
+              <th className="text-center">Delete</th>           {" "}
             </tr>
+                     {" "}
           </thead>
+                   {" "}
           <tbody>
+                       {" "}
             {services &&
               services.map((data, index) => {
                 const {
@@ -261,19 +283,22 @@ const AddCard = () => {
                 } = data;
                 return (
                   <tr key={index}>
-                    <td>{index + 1}</td>
-                    <td>{`${service},`}</td>
-                    <td>{frequency}</td>
+                                        <td>{index + 1}</td>                   {" "}
+                    <td>{`${service},`}</td>                   {" "}
+                    <td>{frequency}</td>                   {" "}
                     <td>
+                                           {" "}
                       {role === "Admin" && (
                         <button
                           className="btn btn-danger"
                           onClick={() => deleteService(_id)}
                         >
-                          Delete
+                                                    Delete                      
+                           {" "}
                         </button>
                       )}
-                      <span className="invisible">a</span>
+                                            <span className="invisible">a</span>
+                                           {" "}
                       <button
                         className="btn btn-primary"
                         onClick={() =>
@@ -286,29 +311,42 @@ const AddCard = () => {
                           })
                         }
                       >
-                        Edit
+                                                Edit                      {" "}
                       </button>
+                                         {" "}
                     </td>
+                                     {" "}
                   </tr>
                 );
               })}
+                     {" "}
           </tbody>
+                 {" "}
         </table>
+             {" "}
       </div>
+           {" "}
       {(role === "Sales" || role === "Admin") && (
         <>
+                   {" "}
           <form onSubmit={handleSubmit}>
+                       {" "}
             <div className="row">
+                           {" "}
               <div className="col-md-4">
+                               {" "}
                 <InputSelect
                   label="Business"
                   name="business"
                   value={business}
                   data={businessList}
                 />
+                             {" "}
               </div>
+                           {" "}
               {!home.includes(business) && (
                 <div className="col-md-3">
+                                   {" "}
                   <InputRow
                     label="Area :"
                     placeholder="in sqft"
@@ -316,14 +354,21 @@ const AddCard = () => {
                     name="area"
                     value={area}
                   />
+                                 {" "}
                 </div>
               )}
+                           {" "}
               <div className="col-md-5">
+                               {" "}
                 <div className="row my-2">
+                                   {" "}
                   <div className="col-md-8">
-                    <h4>Ratrid with other services:</h4>
+                                        <h4>Ratrid with other services:</h4>   
+                                 {" "}
                   </div>
+                                   {" "}
                   <div className="col-md-3">
+                                       {" "}
                     <select
                       className="form-select"
                       aria-label="Default select example"
@@ -331,47 +376,71 @@ const AddCard = () => {
                       value={ratrid}
                       onChange={handleChange}
                     >
+                                           {" "}
                       {ratridOp.map((data) => {
                         return (
                           <option value={data} key={data}>
-                            {data}
+                                                        {data}                 
+                                   {" "}
                           </option>
                         );
                       })}
+                                         {" "}
                     </select>
+                                   {" "}
                   </div>
+                                 {" "}
                 </div>
+                             {" "}
               </div>
-
+                           {" "}
               <div className="col-lg-4">
+                               {" "}
                 <InputSelect
                   label="Frequency"
                   name="frequency"
                   value={frequency}
                   data={frequencyList}
                 />
+                             {" "}
               </div>
+                           {" "}
               <div className="col-lg-4">
+                               {" "}
                 <div className="app">
+                                   {" "}
                   <div className="row mt-2">
+                                       {" "}
                     <div className="col-lg-3">
+                                           {" "}
                       <div className="preview-values">
-                        <h4>Services</h4>
+                                                <h4>Services</h4>               
+                             {" "}
                       </div>
+                                         {" "}
                     </div>
+                                       {" "}
                     <div className="col-lg-6">
+                                           {" "}
                       <MultiSelect
                         onChange={handleOnchange}
                         options={sort}
                         className="multiselect"
                         required
                       />
+                                       {" "}
                     </div>
+                                   {" "}
                   </div>
+                               {" "}
                 </div>
+                           {" "}
               </div>
+                         {" "}
               <div className="col-lg-3">
+                             {" "}
                 <div className="form-floating">
+                                 {" "}
                   <textarea
                     className="form-control"
                     id="floatingTextarea2"
@@ -382,40 +451,55 @@ const AddCard = () => {
                     style={{ height: 100 }}
                     required
                   ></textarea>
+                                 {" "}
                   <label htmlFor="floatingTextarea2">
-                    Location To Be Treated
+                                      Location To Be Treated                {" "}
                   </label>
+                               {" "}
                 </div>
+                         {" "}
               </div>
+                         {" "}
               <div className="col-lg-1">
+                             {" "}
                 <button
                   className="btn btn-dark"
                   type="submit"
                   disabled={isSubmiting || loading}
                 >
-                  Save
+                                  Save              {" "}
                 </button>
+                           {" "}
               </div>
+                       {" "}
             </div>
+                     
           </form>
-
+                   {" "}
           <div className="row mt-2">
+                       {" "}
             <div className="col-md-2">
+                           {" "}
               <button
                 className="btn btn-success btn-lg"
                 type="submit"
                 onClick={generateCards}
                 disabled={isSubmiting || loading}
               >
-                Create Cards
+                                Create Cards              {" "}
               </button>
+                         {" "}
             </div>
+                       {" "}
             <div className="col-md-5">
-              <h5>{showAlert && <Alert />}</h5>
+                            <h5>{showAlert && <Alert />}</h5>           {" "}
             </div>
+                     {" "}
           </div>
+                 {" "}
         </>
       )}
+         {" "}
     </div>
   );
 };

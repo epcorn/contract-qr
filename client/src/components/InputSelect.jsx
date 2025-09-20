@@ -1,5 +1,6 @@
 import React from "react";
-import { useDataContext } from "../context/data_context";
+// REMOVED: No longer needs to get data from the context itself.
+// import { useDataContext } from "../context/data_context";
 
 const InputSelect = ({
   label,
@@ -12,8 +13,9 @@ const InputSelect = ({
   hasPlaceholder,
   placeholderText,
   required = false,
+  handleChange, // It now correctly accepts handleChange as a prop
 }) => {
-  const { handleChange } = useDataContext();
+  // REMOVED: const { handleChange } = useDataContext();
 
   return (
     <div className="row mt-2">
@@ -29,6 +31,9 @@ const InputSelect = ({
           id={id}
           name={name}
           value={value}
+          // THIS IS THE FIX:
+          // It now calls the function passed down from the parent component.
+          // It no longer has its own complex logic.
           onChange={handleChange}
           style={{ width: width }}
         >

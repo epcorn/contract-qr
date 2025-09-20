@@ -1,5 +1,7 @@
+// src/App.js
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { AddCard, Navbar, Renew, AddContract } from "./components";
+import { AddCard, Navbar, Renew, AddContract, AddBilling } from "./components"; // Import the new component
 import {
   Home,
   SingleContract,
@@ -74,6 +76,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* ADD THIS NEW ROUTE */}
+        <Route
+          path="/add-billing/:id"
+          element={
+            <ProtectedRoute>
+              <AddBilling />
+            </ProtectedRoute>
+          }
+        />
+        {/* END OF NEW ROUTE */}
         <Route
           path="/documents/:id"
           element={

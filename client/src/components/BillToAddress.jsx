@@ -1,4 +1,4 @@
-import { InputRow} from ".";
+import { InputRow } from ".";
 import { useDataContext } from "../context/data_context";
 
 const BillToAddress = ({ id }) => {
@@ -28,7 +28,7 @@ const BillToAddress = ({ id }) => {
             className="form-select"
             aria-label="Default select example"
             id={id}
-            name="prefix"
+            name="billToAddress-prefix" // <-- UPDATED
             value={prefix}
             onChange={handleChange}
           >
@@ -47,7 +47,7 @@ const BillToAddress = ({ id }) => {
             type="text"
             placeholder="Full Name"
             id={id}
-            name="name"
+            name="billToAddress-name" // <-- UPDATED
             value={name}
             onChange={handleChange}
             required
@@ -58,7 +58,7 @@ const BillToAddress = ({ id }) => {
         label="Address1 :"
         id={id}
         type="text"
-        name="address1"
+        name="billToAddress-address1" // <-- UPDATED
         placeholder="Building/Office Name"
         value={address1}
       />
@@ -67,7 +67,7 @@ const BillToAddress = ({ id }) => {
         id={id}
         type="text"
         placeholder="Flat/Office No"
-        name="address2"
+        name="billToAddress-address2" // <-- UPDATED
         value={address2}
       />
       <InputRow
@@ -75,7 +75,7 @@ const BillToAddress = ({ id }) => {
         id={id}
         type="text"
         placeholder="Road/Lane Name"
-        name="address3"
+        name="billToAddress-address3" // <-- UPDATED
         value={address3}
       />
       <InputRow
@@ -83,7 +83,7 @@ const BillToAddress = ({ id }) => {
         id={id}
         type="text"
         placeholder="Location"
-        name="address4"
+        name="billToAddress-address4" // <-- UPDATED
         value={address4}
       />
       <InputRow
@@ -91,15 +91,21 @@ const BillToAddress = ({ id }) => {
         id={id}
         type="text"
         placeholder="Landmark"
-        name="nearBy"
+        name="billToAddress-nearBy" // <-- UPDATED
         value={nearBy}
       />
-      <InputRow label="City :" id={id} type="text" name="city" value={city} />
+      <InputRow
+        label="City :"
+        id={id}
+        type="text"
+        name="billToAddress-city" // <-- UPDATED
+        value={city}
+      />
       <InputRow
         label="Pincode :"
         id={id}
         type="number"
-        name="pincode"
+        name="billToAddress-pincode" // <-- UPDATED
         value={pincode}
       />
     </div>

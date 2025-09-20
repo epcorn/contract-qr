@@ -20,10 +20,16 @@ import VerticalChart from "./VerticalChart";
 import Modal from "./Modal";
 import ContractTable from "./ContractTable";
 import SearchContracts from "./SearchContracts";
+// Add the new billing components here
+import AddBilling from "./AddBilling";
+import SingleBillingConfig from "./SingleBillingConfig";
+import MultiBillingConfig from "./MultiBillingConfig";
+
 export {
   ClientDetails,
   AllCards,
   AddContract,
+  AddBilling,
   InputRow,
   ClientAddress,
   AddCard,
@@ -43,4 +49,7 @@ export {
   Modal,
   ContractTable,
   SearchContracts,
+  // Export the new billing components here
+  SingleBillingConfig,
+  MultiBillingConfig,
 };

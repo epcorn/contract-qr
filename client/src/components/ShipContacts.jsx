@@ -11,7 +11,7 @@ const ShipContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="name"
+          name="shipToContact1-name" // <-- UPDATED
           id="shipToContact1"
           value={shipToContact1.name}
           onChange={handleChange}
@@ -23,7 +23,7 @@ const ShipContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="contact"
+          name="shipToContact1-contact" // <-- UPDATED
           id="shipToContact1"
           value={shipToContact1.contact}
           onChange={handleChange}
@@ -35,7 +35,7 @@ const ShipContacts = ({ same }) => {
         <input
           type="email"
           className="form-control mb-2"
-          name="email"
+          name="shipToContact1-email" // <-- UPDATED
           id="shipToContact1"
           value={shipToContact1.email}
           onChange={handleChange}
@@ -46,7 +46,7 @@ const ShipContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="name"
+          name="shipToContact2-name" // <-- UPDATED
           id="shipToContact2"
           value={shipToContact2.name}
           onChange={handleChange}
@@ -56,7 +56,7 @@ const ShipContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="contact"
+          name="shipToContact2-contact" // <-- UPDATED
           id="shipToContact2"
           value={shipToContact2.contact}
           onChange={handleChange}
@@ -66,7 +66,7 @@ const ShipContacts = ({ same }) => {
         <input
           type="email"
           className="form-control mb-2"
-          name="email"
+          name="shipToContact2-email" // <-- UPDATED
           id="shipToContact2"
           value={shipToContact2.email}
           onChange={handleChange}
@@ -76,7 +76,7 @@ const ShipContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="name"
+          name="shipToContact3-name" // <-- UPDATED
           id="shipToContact3"
           value={shipToContact3.name}
           onChange={handleChange}
@@ -86,7 +86,7 @@ const ShipContacts = ({ same }) => {
         <input
           type="text"
           className="form-control mb-2"
-          name="contact"
+          name="shipToContact3-contact" // <-- UPDATED
           id="shipToContact3"
           value={shipToContact3.contact}
           onChange={handleChange}
@@ -96,7 +96,7 @@ const ShipContacts = ({ same }) => {
         <input
           type="email"
           className="form-control mb-2"
-          name="email"
+          name="shipToContact3-email" // <-- UPDATED
           id="shipToContact3"
           value={shipToContact3.email}
           onChange={handleChange}
