@@ -68,7 +68,7 @@ export const calculateBillingMonths = (startDate, frequencyType, endDate) => {
     }
 
     // CHANGED: Added the new option here
-    case "Full payment in advance":
+    case "Full Payment While Signing The Contract":
     case "Bill After Job":
     case "Manual":
       // No automatic calculation for these options
