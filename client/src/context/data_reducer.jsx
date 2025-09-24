@@ -57,9 +57,10 @@ import {
   SET_BILLING_MONTHS,
   FETCH_SERVICES_FOR_CONTRACT,
   INITIALIZE_MULTI_BILLING,
+  SAVE_BILLING_CONFIG_SUCCESS,
+  SAVE_BILLING_CONFIG_FAIL,
 } from "./action";
 import { initialState } from "./data_context";
-// IMPORT THE CALCULATION FUNCTION
 import { calculateBillingMonths } from "../../utils/billingUtils";
 
 const data_reducer = (state, action) => {
@@ -90,8 +91,27 @@ const data_reducer = (state, action) => {
     case DISPLAY_ALERT: {
       return {
         ...state,
-        loading: true,
         showAlert: true,
+        alertType: action.payload.type,
+        alertText: action.payload.msg,
+      };
+    }
+    case SAVE_BILLING_CONFIG_SUCCESS: {
+      return {
+        ...state,
+        loading: false,
+        showAlert: true,
+        alertType: "success",
+        alertText: action.payload.msg,
+      };
+    }
+    case SAVE_BILLING_CONFIG_FAIL: {
+      return {
+        ...state,
+        loading: false,
+        showAlert: true,
+        alertType: "danger",
+        alertText: action.payload.msg,
       };
     }
     case REGISTER_SUCCESS: {
@@ -180,14 +200,30 @@ const data_reducer = (state, action) => {
     }
     case INITIALIZE_MULTI_BILLING: {
       const services = action.payload || [];
-      const newMultiBillingConfig = services.map((service) => ({
-        serviceId: service._id,
-        serviceName: service.service,
-        frequencyType: "",
-        calculatedBillingMonths: [],
-        manualDescription: "",
-        selectedManualMonths: [],
-      }));
+      // Get the configs that were just loaded from the database by FETCH_CONTRACT
+      const existingConfigs = state.multiBillingConfig || [];
+
+      const newMultiBillingConfig = services.map((service) => {
+        // Find if a configuration for this specific service was already saved
+        const existingConfig = existingConfigs.find(
+          (c) => c.serviceId === service._id
+        );
+
+        // Define the default structure for a service's billing config
+        const defaultConfig = {
+          serviceId: service._id,
+          serviceName: service.service,
+          frequencyType: "",
+          calculatedBillingMonths: [],
+          manualDescription: "",
+          selectedManualMonths: [],
+        };
+
+        // Return the default config merged with the existing one (if found)
+        // This preserves the saved data (like frequencyType)
+        return { ...defaultConfig, ...existingConfig };
+      });
+
       return {
         ...state,
         multiBillingConfig: newMultiBillingConfig,
@@ -278,7 +314,7 @@ const data_reducer = (state, action) => {
           }))
         : initialState.multiBillingConfig;
 
-      return {
+      const newState = {
         ...state,
         loading: false,
         singleContract: contract,
@@ -306,6 +342,8 @@ const data_reducer = (state, action) => {
         singleBillingConfig: initialSingleBillingConfig,
         multiBillingConfig: initialMultiBillingConfig,
       };
+
+      return newState;
     }
     case FETCH_CARD: {
       return {
@@ -351,9 +389,6 @@ const data_reducer = (state, action) => {
       }
 
       if (id === "multiBillingConfig" && typeof index === "number") {
-        // --- ADD THIS LINE ---
-        console.log("4. Reducer: Matched multiBillingConfig logic.");
-
         const newMultiBillingConfig = [...state.multiBillingConfig];
         const currentEntry = newMultiBillingConfig[index];
 
@@ -364,20 +399,11 @@ const data_reducer = (state, action) => {
           };
 
           if (name === "frequencyType") {
-            // --- ADD THESE LINES ---
-            console.log("5. Reducer: Recalculating months with:", {
-              startDate,
-              endDate,
-              newFrequency: value,
-            });
             const calculated = calculateBillingMonths(
               new Date(startDate),
               value,
               endDate
             );
-            console.log("6. Reducer: Calculation result is:", calculated);
-            // --- END OF ADDED LINES ---
-
             if (value && value !== "Manual" && value !== "Bill After Job") {
               updatedEntry.calculatedBillingMonths = calculated;
               updatedEntry.selectedManualMonths = [];

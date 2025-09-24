@@ -12,6 +12,7 @@ const {
   fileUpload,
   deleteFile,
   testingReportBLR,
+  updateBillingConfig, // <-- IMPORT THE NEW CONTROLLER
 } = contractController;
 
 // Contract Routes
@@ -28,6 +29,14 @@ router.patch("/:id", authorizeUser("Admin", "Sales"), updateContract);
 // File Upload Routes
 router.post("/uploadDoc/:id", authorizeUser("Sales", "Admin"), fileUpload);
 router.patch("/uploadDoc/:id", authorizeUser("Admin"), deleteFile);
+
+// --- NEW ROUTE FOR BILLING CONFIGURATION ADDED ---
+router.patch(
+  "/:id/billing",
+  authorizeUser("Sales", "Admin", "Back Office"),
+  updateBillingConfig
+);
+// --- END NEW ROUTE ---
 
 //New Routes
 router.get("/test/:id", authorizeUser("Admin"), testingReportBLR);

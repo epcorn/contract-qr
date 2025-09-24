@@ -1,58 +1,99 @@
-require("dotenv").config();
 const mongoose = require("mongoose");
-const ServiceReport = require("./models/serviceReport"); // Adjust path as needed
+const moment = require("moment");
+require("dotenv").config();
+
+// Adjust the paths to your model files as needed
+const Contract = require("./models/contract");
+const Service = require("./models/service");
 
 /**
- * Fetches all unique contract numbers from service reports created between
- * September 1st and September 15th for the current year.
- * @returns {Promise<Array>} - An array of unique contract numbers.
+ * Fetches all service cards and the complete billing configuration for a specific contract number.
+ * @param {string} contractNo - The contract number to search for (e.g., "A/17311").
  */
-const getContractNumbersInSeptember = async () => {
+const getServicesForContract = async (contractNo) => {
+  if (!contractNo) {
+    throw new Error("Contract number is required.");
+  }
+
   try {
-    // 1. Connect to the MongoDB database
     await mongoose.connect(process.env.MONGO_URL);
-    console.log("Connected to MongoDB successfully!");
+    console.log("Database connected...");
 
-    // Set the start and end dates for the query
-    const year = new Date().getFullYear();
-    const startDate = new Date(`${year}-09-01T00:00:00.000Z`);
-    const endDate = new Date(`${year}-09-15T23:59:59.999Z`);
+    console.log(`\nSearching for contract: ${contractNo}`);
 
-    // 2. Find all service reports within the specified date range and select only the 'contract' field
-    const reports = await ServiceReport.find(
-      {
-        serviceDate: {
-          $gte: startDate,
-          $lte: endDate,
-        },
-      },
-      { contract: 1, _id: 0 } // Projection to include only the 'contract' field and exclude '_id'
-    ).exec();
-
-    // 3. Extract and get unique contract numbers
-    const contractNumbers = reports.map((report) => report.contract);
-    const uniqueContractNumbers = [...new Set(contractNumbers)];
-
-    console.log(
-      `Found ${uniqueContractNumbers.length} unique contract numbers for service reports between September 1st and 15th, ${year}.`
+    // 1. Find the contract and select all necessary billing fields
+    const contract = await Contract.findOne({ contractNo: contractNo }).select(
+      "contractNo billingType singleBillingConfig multiBillingConfig"
     );
 
-    return uniqueContractNumbers;
+    if (!contract) {
+      console.log(`Contract "${contractNo}" not found.`);
+      return null;
+    }
+    console.log(
+      `Found contract with ID: ${contract._id}. Fetching associated services...`
+    );
+
+    // 2. Find all services linked to that contract's _id
+    const services = await Service.find({ contract: contract._id })
+      .select("serviceCardNumber billingMonths")
+      .sort({ serviceCardNumber: 1 });
+
+    console.log(
+      `Found ${services.length} service card(s) for ${contractNo}. Formatting output...`
+    );
+
+    // 3. Format the service-specific details
+    const serviceDetails = services.map((service) => {
+      return {
+        serviceCardNumber: service.serviceCardNumber || "N/A",
+        calculatedBillingMonths:
+          service.billingMonths && service.billingMonths.length > 0
+            ? service.billingMonths.join(", ")
+            : "No specific billing months assigned.",
+      };
+    });
+
+    // 4. Structure the final comprehensive response object
+    const responseData = {
+      contractNo: contract.contractNo,
+      billingSetup: {
+        type: contract.billingType || "Not Specified",
+        // Conditionally show the relevant config based on the billing type
+        singleBillingConfig:
+          contract.billingType === "single"
+            ? contract.singleBillingConfig
+            : "N/A (Billing type is not 'single')",
+        multiBillingConfig:
+          contract.billingType === "multi"
+            ? contract.multiBillingConfig
+            : "N/A (Billing type is not 'multi')",
+      },
+      serviceCards: serviceDetails,
+    };
+
+    return responseData;
   } catch (error) {
     console.error("An error occurred:", error);
-    return [];
+    return null;
   } finally {
-    // 4. Disconnect from the database
-    await mongoose.disconnect();
-    console.log("Disconnected from MongoDB.");
+    await mongoose.connection.close();
+    console.log("Database connection closed.");
   }
 };
 
-// Example usage:
-getContractNumbersInSeptember().then((contractNumbers) => {
-  // Use JSON.stringify to print the entire array without truncation
-  console.log(
-    "Unique Contract Numbers:",
-    JSON.stringify(contractNumbers, null, 2)
-  );
-});
+// --- Script Runner ---
+const run = async () => {
+  const contractToFind = "A/17311";
+  const result = await getServicesForContract(contractToFind);
+
+  if (result) {
+    console.log(
+      `\n--- Full Billing Report for Contract: ${result.contractNo} ---`
+    );
+    console.log(JSON.stringify(result, null, 2));
+    console.log("--- End of Report ---\n");
+  }
+};
+
+run();

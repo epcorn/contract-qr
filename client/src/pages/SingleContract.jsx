@@ -34,7 +34,6 @@ const SingleContract = () => {
 
   useEffect(() => {
     fetchSingleContract(id);
-
     // eslint-disable-next-line
   }, [id]);
 
@@ -61,7 +60,7 @@ const SingleContract = () => {
     <div className="container">
       <h5 className="text-center">{showAlert && <Alert />}</h5>
       <div className="row">
-        <div className="col-md-6 my-3">
+        <div className="col-lg-6 my-3">
           <h3 className="d-inline">{`Contract Number: ${contractNo}`}</h3>
           {role === "Admin" && (
             <button
@@ -73,23 +72,28 @@ const SingleContract = () => {
           )}
         </div>
 
-        <div className="col-md-2 my-3">
+        <div className="col-lg-6 my-3 d-flex justify-content-end gap-2">
           <Link to={`/addcard/${id}`}>
             {(role === "Sales" || role === "Admin") && (
               <button className="btn btn-primary">Add Cards</button>
             )}
           </Link>
-        </div>
-        <div className="col-md-2 my-3">
+
+          {/* --- NEW EDIT BILLING BUTTON ADDED --- */}
+          <Link to={`/add-billing/${id}`}>
+            {(role === "Sales" || role === "Admin") && (
+              <button className="btn btn-warning">Edit Billing</button>
+            )}
+          </Link>
+          {/* --- END NEW BUTTON --- */}
+
           <Link to={`/renew/${id}`}>
             {(role === "Sales" || role === "Admin") && (
-              <button onClick={renewContract} className="btn btn-info btn-sm">
-                Edit/Renew Contract
+              <button onClick={renewContract} className="btn btn-info">
+                Edit/Renew
               </button>
             )}
           </Link>
-        </div>
-        <div className="col-md-2 my-3">
           <Link to={`/documents/${id}`}>
             <button className="btn btn-success">Documents</button>
           </Link>

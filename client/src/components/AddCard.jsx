@@ -1,5 +1,3 @@
-// src/components/AddCard.js
-
 import React, { useEffect, useState } from "react";
 import { useDataContext } from "../context/data_context";
 import { InputSelect, Alert, Loading, InputRow } from ".";
@@ -14,7 +12,7 @@ const AddCard = () => {
   const [value, setValue] = useState("");
   const [chemicals, setChemicals] = useState([]);
   const [isSubmiting, setIsSubmiting] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
+  // const [submitError, setSubmitError] = useState(null); // No longer needed, using alerts
 
   const navigate = useNavigate();
 
@@ -69,7 +67,7 @@ const AddCard = () => {
   const businessList = [];
   const serviceChemicalsList = [];
   if (adminList) {
-    adminList.map(
+    adminList.forEach(
       (item) =>
         (item.business !== undefined && businessList.push(item.business)) ||
         (item.serviceChemicals !== undefined &&
@@ -109,6 +107,7 @@ const AddCard = () => {
   const { id } = useParams();
 
   const dueRange = (startDate, endDate) => {
+    if (!startDate || !endDate) return; // Guard against missing dates
     const startMonth = startDate.split("T")[0];
     const endMonth = endDate.split("T")[0];
 
@@ -118,7 +117,7 @@ const AddCard = () => {
     const curDate = start.format("DD");
 
     var months = [start.format("MMM YY")];
-    end.subtract(1, "month"); //Substract one month to exclude endDate itself
+    end.subtract(1, "month");
 
     var month = moment(start);
     while (month < end) {
@@ -128,378 +127,306 @@ const AddCard = () => {
     const due = [];
     months.forEach((date, index) => {
       if (startDate === endDate && index === 0) {
-        return due.push(`${curDate} ${date}, Onwards`);
+        due.push(`${curDate} ${date}, Onwards`);
+        return;
       }
-      if (
-        frequency &&
-        frequency === "3 Services Once In 4 Months" &&
-        index % 4 === 0
-      ) {
-        return due.push(date);
-      }
-      if (frequency && frequency === "Quarterly" && index % 3 === 0) {
-        return due.push(date);
-      }
-      if (frequency && frequency === "Single" && index === 0) {
-        return due.push(date);
-      }
-      if (
-        frequency &&
+      if (frequency === "3 Services Once In 4 Months" && index % 4 === 0) {
+        due.push(date);
+      } else if (frequency === "Quarterly" && index % 3 === 0) {
+        due.push(date);
+      } else if (frequency === "Single" && index === 0) {
+        due.push(date);
+      } else if (
         frequency === "2 Services Once In 6 Months" &&
         index % 6 === 0
       ) {
-        return due.push(date);
-      }
-      if (frequency && frequency === "Alternate Monthly" && index % 2 === 0) {
-        return due.push(date);
-      }
-      if (
-        frequency &&
-        (frequency === "Daily" ||
-          frequency === "Weekly" ||
-          frequency === "Multi Frequency" ||
-          frequency === "Alternate Days" ||
-          frequency === "As An When Called" ||
-          frequency === "Twice A Week" ||
-          frequency === "Thrice A Week" ||
-          frequency === "Thrice A Month" ||
-          frequency === "Fortnightly" ||
-          frequency === "Other" ||
-          frequency === "Monthly") &&
-        index % 1 === 0
+        due.push(date);
+      } else if (frequency === "Alternate Monthly" && index % 2 === 0) {
+        due.push(date);
+      } else if (
+        [
+          "Daily",
+          "Weekly",
+          "Multi Frequency",
+          "Alternate Days",
+          "As An When Called",
+          "Twice A Week",
+          "Thrice A Week",
+          "Thrice A Month",
+          "Fortnightly",
+          "Other",
+          "Monthly",
+        ].includes(frequency)
       ) {
-        return due.push(date);
+        due.push(date);
       }
     });
     setDueMonths(due);
   };
 
   useEffect(() => {
-    fetchSingleContract(id); // eslint-disable-next-line
+    fetchSingleContract(id);
+    // eslint-disable-next-line
   }, [id, add, del]);
 
   useEffect(() => {
-    if ((startDate, endDate)) {
+    if (startDate && endDate) {
       dueRange(startDate, endDate);
-    } // eslint-disable-next-line
-  }, [startDate, frequency]);
+    }
+    // eslint-disable-next-line
+  }, [startDate, endDate, frequency]);
 
   useEffect(() => {
     allValues();
-    addChemicals(); // eslint-disable-next-line
+    addChemicals();
+    // eslint-disable-next-line
   }, [value]);
 
+  // --- UPDATED SUBMIT HANDLER FOR SAVING A SINGLE CARD ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmiting || loading) return;
+    if (isSubmiting || loading || !value) {
+      displayAlert({
+        type: "danger",
+        msg: "Please select services before saving.",
+      });
+      return;
+    }
 
     setIsSubmiting(true);
     try {
-      const _id = "hkjnhk";
-      await createCard(dueMonths, value, chemicals, _id);
-      setAdd(!add);
-      displayAlert();
+      await createCard(dueMonths, value, chemicals);
+      setAdd(!add); // Re-fetch the contract to show the new card
+      setValue(""); // Clear the multi-select input
+      displayAlert({ type: "success", msg: "Service card saved!" });
     } catch (error) {
-      setSubmitError(error);
+      console.error("Error saving service card:", error);
+      displayAlert({
+        type: "danger",
+        msg: "Failed to save card. Please try again.",
+      });
     } finally {
       setIsSubmiting(false);
     }
   };
 
+  // --- UPDATED GENERATE CARDS HANDLER WITH PROPER ERROR HANDLING ---
   const generateCards = async (e) => {
     e.preventDefault();
+    setIsSubmiting(true);
+
     try {
       await createCards(id);
+
+      // This part now only runs on success
       setAdd(!add);
-      displayAlert();
+      displayAlert({
+        type: "success",
+        msg: "Cards created! Redirecting to billing...",
+      });
       navigate(`/add-billing/${id}`);
     } catch (error) {
-      setIsSubmiting(error);
+      // This part now runs on failure
+      console.error("Error creating cards:", error);
+      displayAlert({
+        type: "danger",
+        msg: "Failed to create cards. Please check console for details.",
+      });
     } finally {
-      /*
-      
-                                 save contract ,  create cards  add billing 
-                                 when saving billing configuration is clicked so 
-                                 should backend calc the months or frontend
-                                 also we have to pass start date from create contract page
-                                 to saving billing configuration.
-
-                                 */
+      // This always runs
       setIsSubmiting(false);
     }
   };
 
-  if (loading) {
-    return <Loading />;
-  }
-  if (isSubmiting) {
+  if (loading && !isSubmiting) {
+    // Prevent double loading indicator
     return <Loading />;
   }
 
   return (
     <div className="container my-3">
-           {" "}
-      <div className="row g-4">
-               {" "}
+      <div className="row g-4 mb-4 text-center">
         <div className="col-md-4">
-                    <h4>{`Contract Number: ${contractNo}`}</h4>       {" "}
+          <h4>{`Contract Number: ${contractNo || ""}`}</h4>
         </div>
-               {" "}
         <div className="col-md-4">
-                   {" "}
-          <h4>{`Start Date: ${moment(startDate).format("DD/MM/YYYY")}`}</h4>   
-             {" "}
+          <h4>{`Start Date: ${
+            startDate ? moment(startDate).format("DD/MM/YYYY") : ""
+          }`}</h4>
         </div>
-               {" "}
         <div className="col-md-4">
-                   {" "}
-          <h4>{`End Date: ${moment(endDate).format("DD/MM/YYYY")}`}</h4>       {" "}
+          <h4>{`End Date: ${
+            endDate ? moment(endDate).format("DD/MM/YYYY") : ""
+          }`}</h4>
         </div>
-                <hr />       {" "}
-        <table className="table table-striped table-bordered border-dark ">
-                   {" "}
-          <thead>
-                       {" "}
-            <tr>
-                            <th>No</th>             {" "}
-              <th className="text-center">Services</th>             {" "}
-              <th className="text-center">Frequency</th>             {" "}
-              <th className="text-center">Delete</th>           {" "}
-            </tr>
-                     {" "}
-          </thead>
-                   {" "}
-          <tbody>
-                       {" "}
-            {services &&
-              services.map((data, index) => {
-                const {
-                  frequency,
-                  service,
-                  _id,
-                  treatmentLocation,
-                  business,
-                  area,
-                } = data;
-                return (
-                  <tr key={index}>
-                                        <td>{index + 1}</td>                   {" "}
-                    <td>{`${service},`}</td>                   {" "}
-                    <td>{frequency}</td>                   {" "}
-                    <td>
-                                           {" "}
-                      {role === "Admin" && (
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => deleteService(_id)}
-                        >
-                                                    Delete                      
-                           {" "}
-                        </button>
-                      )}
-                                            <span className="invisible">a</span>
-                                           {" "}
-                      <button
-                        className="btn btn-primary"
-                        onClick={() =>
-                          editService({
-                            frequency,
-                            business,
-                            treatmentLocation,
-                            area,
-                            _id,
-                          })
-                        }
-                      >
-                                                Edit                      {" "}
-                      </button>
-                                         {" "}
-                    </td>
-                                     {" "}
-                  </tr>
-                );
-              })}
-                     {" "}
-          </tbody>
-                 {" "}
-        </table>
-             {" "}
       </div>
-           {" "}
+      <hr />
+
+      <h5>Existing Service Cards</h5>
+      <table className="table table-striped table-bordered border-dark ">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th className="text-center">Services</th>
+            <th className="text-center">Frequency</th>
+            <th className="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {services && services.length > 0 ? (
+            services.map((data, index) => {
+              const {
+                frequency,
+                service,
+                _id,
+                treatmentLocation,
+                business,
+                area,
+              } = data;
+              return (
+                <tr key={_id}>
+                  <td>{index + 1}</td>
+                  <td>{service.join(", ")}</td>
+                  <td>{frequency}</td>
+                  <td>
+                    {role === "Admin" && (
+                      <button
+                        className="btn btn-danger btn-sm me-2"
+                        onClick={() => deleteService(_id)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() =>
+                        editService({
+                          frequency,
+                          business,
+                          treatmentLocation,
+                          area,
+                          _id,
+                        })
+                      }
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan="4" className="text-center">
+                No service cards have been added yet.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
       {(role === "Sales" || role === "Admin") && (
-        <>
-                   {" "}
+        <div className="mt-5 p-4 border rounded shadow-sm">
+          <h5 className="mb-3">Add a New Service Card</h5>
           <form onSubmit={handleSubmit}>
-                       {" "}
-            <div className="row">
-                           {" "}
+            <div className="row align-items-end g-3">
               <div className="col-md-4">
-                               {" "}
                 <InputSelect
                   label="Business"
                   name="business"
                   value={business}
                   data={businessList}
+                  handleChange={handleChange}
                 />
-                             {" "}
               </div>
-                           {" "}
               {!home.includes(business) && (
                 <div className="col-md-3">
-                                   {" "}
                   <InputRow
-                    label="Area :"
-                    placeholder="in sqft"
+                    label="Area (in sqft):"
+                    placeholder="e.g., 1500"
                     type="text"
                     name="area"
                     value={area}
+                    handleChange={handleChange}
                   />
-                                 {" "}
                 </div>
               )}
-                           {" "}
               <div className="col-md-5">
-                               {" "}
-                <div className="row my-2">
-                                   {" "}
-                  <div className="col-md-8">
-                                        <h4>Ratrid with other services:</h4>   
-                                 {" "}
-                  </div>
-                                   {" "}
-                  <div className="col-md-3">
-                                       {" "}
-                    <select
-                      className="form-select"
-                      aria-label="Default select example"
-                      name="ratrid"
-                      value={ratrid}
-                      onChange={handleChange}
-                    >
-                                           {" "}
-                      {ratridOp.map((data) => {
-                        return (
-                          <option value={data} key={data}>
-                                                        {data}                 
-                                   {" "}
-                          </option>
-                        );
-                      })}
-                                         {" "}
-                    </select>
-                                   {" "}
-                  </div>
-                                 {" "}
-                </div>
-                             {" "}
+                <label className="form-label">
+                  Ratrid with other services:
+                </label>
+                <select
+                  className="form-select"
+                  name="ratrid"
+                  value={ratrid}
+                  onChange={handleChange}
+                >
+                  {ratridOp.map((data) => (
+                    <option value={data} key={data}>
+                      {data}
+                    </option>
+                  ))}
+                </select>
               </div>
-                           {" "}
               <div className="col-lg-4">
-                               {" "}
                 <InputSelect
                   label="Frequency"
                   name="frequency"
                   value={frequency}
                   data={frequencyList}
+                  handleChange={handleChange}
                 />
-                             {" "}
               </div>
-                           {" "}
               <div className="col-lg-4">
-                               {" "}
-                <div className="app">
-                                   {" "}
-                  <div className="row mt-2">
-                                       {" "}
-                    <div className="col-lg-3">
-                                           {" "}
-                      <div className="preview-values">
-                                                <h4>Services</h4>               
-                             {" "}
-                      </div>
-                                         {" "}
-                    </div>
-                                       {" "}
-                    <div className="col-lg-6">
-                                           {" "}
-                      <MultiSelect
-                        onChange={handleOnchange}
-                        options={sort}
-                        className="multiselect"
-                        required
-                      />
-                                       {" "}
-                    </div>
-                                   {" "}
-                  </div>
-                               {" "}
-                </div>
-                           {" "}
+                <label className="form-label">Services</label>
+                <MultiSelect
+                  onChange={handleOnchange}
+                  options={sort}
+                  className="multiselect"
+                />
               </div>
-                         {" "}
               <div className="col-lg-3">
-                             {" "}
-                <div className="form-floating">
-                                 {" "}
-                  <textarea
-                    className="form-control"
-                    id="floatingTextarea2"
-                    name="treatmentLocation"
-                    placeholder="Location To Be Treated"
-                    value={treatmentLocation}
-                    onChange={handleChange}
-                    style={{ height: 100 }}
-                    required
-                  ></textarea>
-                                 {" "}
-                  <label htmlFor="floatingTextarea2">
-                                      Location To Be Treated                {" "}
-                  </label>
-                               {" "}
-                </div>
-                         {" "}
+                <label htmlFor="treatmentLocation" className="form-label">
+                  Location To Be Treated
+                </label>
+                <textarea
+                  className="form-control"
+                  id="treatmentLocation"
+                  name="treatmentLocation"
+                  value={treatmentLocation}
+                  onChange={handleChange}
+                  rows="2"
+                  required
+                ></textarea>
               </div>
-                         {" "}
               <div className="col-lg-1">
-                             {" "}
                 <button
-                  className="btn btn-dark"
+                  className="btn btn-dark w-100"
                   type="submit"
-                  disabled={isSubmiting || loading}
+                  disabled={isSubmiting}
                 >
-                                  Save              {" "}
+                  Save
                 </button>
-                           {" "}
               </div>
-                       {" "}
             </div>
-                     
           </form>
-                   {" "}
-          <div className="row mt-2">
-                       {" "}
-            <div className="col-md-2">
-                           {" "}
+
+          <hr className="my-4" />
+
+          <div className="row align-items-center">
+            <div className="col-md-3">
               <button
-                className="btn btn-success btn-lg"
-                type="submit"
+                className="btn btn-success btn-lg w-100"
                 onClick={generateCards}
-                disabled={isSubmiting || loading}
+                disabled={isSubmiting || !services || services.length === 0}
               >
-                                Create Cards              {" "}
+                Create Cards & Add Billing
               </button>
-                         {" "}
             </div>
-                       {" "}
-            <div className="col-md-5">
-                            <h5>{showAlert && <Alert />}</h5>           {" "}
-            </div>
-                     {" "}
+            <div className="col-md-9">{showAlert && <Alert />}</div>
           </div>
-                 {" "}
-        </>
+        </div>
       )}
-         {" "}
     </div>
   );
 };

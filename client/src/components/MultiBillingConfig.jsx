@@ -1,4 +1,4 @@
-import React from "react"; // useEffect has been removed as it's no longer needed
+import React from "react";
 import { useDataContext } from "../context/data_context";
 import { InputRow, InputSelect } from ".";
 import Select from "react-select";
@@ -67,6 +67,7 @@ const MultiBillingConfig = ({ services, startDate, endDate }) => {
     useDataContext();
 
   const billingFrequencyOptions = [
+    "Full payment in advance", // CHANGED: Added new option
     "50% while signing contract and 50% after 6 months",
     "Quarterly start",
     "Quarterly end",
@@ -76,9 +77,6 @@ const MultiBillingConfig = ({ services, startDate, endDate }) => {
     "Bill After Job",
     "Manual",
   ];
-
-  // The useEffect hook for calculation has been removed from this component.
-  // The logic is now handled directly in the reducer for better reliability.
 
   if (!services || services.length === 0) {
     return (
@@ -112,7 +110,6 @@ const MultiBillingConfig = ({ services, startDate, endDate }) => {
 
             <div className="row">
               <div className="col-md-12 mb-3">
-                // Inside MultiBillingConfig.jsx...
                 <InputSelect
                   label="Billing Frequency Type:"
                   name="frequencyType"
@@ -122,7 +119,6 @@ const MultiBillingConfig = ({ services, startDate, endDate }) => {
                   placeholderText="-- Select Billing Frequency --"
                   required={true}
                   handleChange={(e) => {
-                    // --- ADD THIS LINE ---
                     console.log(`1. onChange triggered for Card #${index + 1}`);
                     handleChange(e, { id: "multiBillingConfig", index });
                   }}

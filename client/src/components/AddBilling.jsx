@@ -11,25 +11,43 @@ const AddBilling = () => {
   const {
     billingType,
     handleChange,
-    submitBillingData,
+    saveBillingConfig,
     loading,
     showAlert,
-    displayAlert,
     singleContract,
-    fetchSingleContract, // <-- Import function
-    fetchServicesForContract, // <-- Import function
-    servicesForContract, // <-- Import correct state for services
+    fetchSingleContract,
+    fetchServicesForContract,
+    servicesForContract,
   } = useDataContext();
 
   const { contractNo, startDate, endDate } = singleContract || {};
+  console.log("CHECKPOINT 5: [COMPONENT] AddBilling is rendering...");
+  console.log("   > State from context - billingType:", billingType);
 
-  // This useEffect ensures contract data (start/end dates) is loaded when the component mounts
+  // --- FINAL DEBUGGING useEffect ---
   useEffect(() => {
-    if (contractId) {
-      fetchSingleContract(contractId);
-    }
-    // eslint-disable-next-line
+    const loadContractData = async () => {
+      if (contractId) {
+        console.log("A. Inside useEffect, about to fetch contract...");
+        const contractData = await fetchSingleContract(contractId);
+        console.log("B. Contract fetch finished. Returned data:", contractData);
+
+        if (contractData && contractData.billingType === "multi") {
+          console.log("C. Condition MET. About to fetch services...");
+          await fetchServicesForContract(contractId, contractData.contractNo);
+          console.log("D. Services fetch call FINISHED.");
+        } else {
+          console.log(
+            "E. Condition FAILED. Not fetching services. Billing type was:",
+            contractData?.billingType
+          );
+        }
+      }
+    };
+    loadContractData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId]);
+  // --- END OF DEBUGGING useEffect --
 
   const billingTypeOptions = [
     { label: "Single Billing", value: "single" },
@@ -40,28 +58,22 @@ const AddBilling = () => {
     const { name, value } = e.target;
     handleChange({ name, value });
 
-    // When user selects multi-billing, fetch the associated service cards
-    if (value === "multi" && contractId) {
-      fetchServicesForContract(contractId);
+    // Pass contractNo directly here as well to be safe
+    if (value === "multi" && contractId && contractNo) {
+      fetchServicesForContract(contractId, contractNo);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await submitBillingData(contractId);
-      displayAlert({
-        type: "success",
-        msg: "Billing data saved successfully!",
-      });
+      await saveBillingConfig(contractId);
       setTimeout(() => {
         navigate(`/contracts/${contractId}`);
       }, 2000);
     } catch (error) {
-      displayAlert({
-        type: "danger",
-        msg: "Failed to save billing data. Please try again.",
-      });
+      // The context already displayed the error alert.
+      console.error("Failed to save billing configuration:", error);
     }
   };
 
@@ -119,7 +131,6 @@ const AddBilling = () => {
         )}
 
         {billingType === "multi" && (
-          // UPDATED: Pass the correct services prop
           <MultiBillingConfig
             services={servicesForContract}
             startDate={startDate}

@@ -122,26 +122,36 @@ const contractServices = async (req, res) => {
 };
 
 // --- NEW, DEDICATED FUNCTION FOR THE BILLING PAGE ---
+// --- FINAL, CORRECTED FUNCTION ---
 const getServicesForBilling = async (req, res) => {
-  const { search } = req.query;
   try {
-    const contract = await Contract.findOne({ contractNo: search }).populate(
-      "services"
-    );
+    const { search: contractNo } = req.query;
 
-    if (!contract) {
-      return res.status(404).json({ msg: "No Contract Found" });
+    if (!contractNo) {
+      return res.status(400).json({ msg: "Contract number is required." });
     }
 
-    // Simply send the array of populated services back.
-    res.status(200).json({ services: contract.services });
+    // Step 1: Find the contract by its number just to get its unique _id.
+    // Using a case-insensitive regex makes the search more reliable.
+    const contract = await Contract.findOne({
+      contractNo: { $regex: `^${contractNo}$`, $options: "i" },
+    }).select("_id");
+
+    // If no contract matches the number, it's not an error, just return an empty array.
+    if (!contract) {
+      return res.status(200).json({ services: [] });
+    }
+
+    // Step 2: Use the found contract's unique _id to find all associated services.
+    // This is the most direct and reliable way to get the related documents.
+    const services = await Service.find({ contract: contract._id });
+
+    res.status(200).json({ services });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ msg: "Server Error", error: error.message });
+    console.error("Error in getServicesForBilling:", error);
+    res.status(500).json({ msg: "Server Error" });
   }
 };
-// --- END OF NEW FUNCTION ---
-
 const createServiceReport = async (req, res) => {
   const {
     params: { id: serviceId },

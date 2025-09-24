@@ -42,7 +42,6 @@ const createDoc = async (req, res) => {
     contractNo,
     startDate,
     endDate,
-    billingFrequency,
     shipToAddress,
     billToAddress,
     billToContact1,
@@ -118,6 +117,34 @@ const createDoc = async (req, res) => {
 
   try {
     services.forEach(async (element, index) => {
+      let billingFrequencyString = "Not Configured";
+
+      if (isValidContract.billingType === "single") {
+        const config = isValidContract.singleBillingConfig;
+        const months =
+          (config?.frequencyType === "Manual"
+            ? config?.selectedManualMonths
+            : config?.calculatedBillingMonths) || [];
+        billingFrequencyString = `${
+          config?.frequencyType || "N/A"
+        } (${months.join(", ")})`;
+      } else if (isValidContract.billingType === "multi") {
+        const multiConfig = isValidContract.multiBillingConfig.find(
+          (c) => c.serviceId.toString() === element._id.toString()
+        );
+        if (multiConfig) {
+          const months =
+            (multiConfig.frequencyType === "Manual"
+              ? multiConfig.selectedManualMonths
+              : multiConfig.calculatedBillingMonths) || [];
+          billingFrequencyString = `${multiConfig.frequencyType} (${months.join(
+            ", "
+          )})`;
+        }
+      } else if (isValidContract.billingFrequency) {
+        billingFrequencyString = isValidContract.billingFrequency;
+      }
+
       const z = element._id.toString();
       const tp = await QRCode.toDataURL(`https://cqr.sat9.in/feedback/${z}`);
       let template = fs.readFileSync(path.resolve(__dirname, "test3.docx"));
@@ -146,7 +173,6 @@ const createDoc = async (req, res) => {
       const buffer = await newdoc.createReport({
         cmdDelimiter: ["{", "}"],
         template,
-
         additionalJsContext: {
           contractNo: contractNo,
           type: type,
@@ -172,7 +198,7 @@ const createDoc = async (req, res) => {
           frequency: element.frequency,
           location: element.treatmentLocation,
           area: element.area,
-          billingFrequency: billingFrequency,
+          billingFrequency: billingFrequencyString,
           specialInstruction: specialInstruction,
           url: "12",
           qrCode: async (url12) => {
@@ -199,7 +225,7 @@ const createDoc = async (req, res) => {
           folder: "service-cards",
         }
       );
-      const serv = await Service.findByIdAndUpdate(
+      await Service.findByIdAndUpdate(
         { _id: z },
         { card: result.secure_url },
         {
@@ -213,7 +239,6 @@ const createDoc = async (req, res) => {
       sendContractEmail(emails, contractNo, allserv, allfreq, start, end, id);
     }
 
-    // creatCont(id);
     res.status(200).json({ msg: "Cards created successfully" });
   } catch (error) {
     console.log(error);
@@ -271,7 +296,6 @@ const creatCont = async (id, req, res) => {
     contractNo,
     startDate,
     endDate,
-    billingFrequency,
     shipToAddress,
     billToAddress,
     billToContact1,
@@ -321,6 +345,23 @@ const creatCont = async (id, req, res) => {
       linebreaks: true,
     });
 
+    let billingFrequencyString = "Not Configured";
+
+    if (isValidContract.billingType === "single") {
+      const config = isValidContract.singleBillingConfig;
+      const months =
+        (config?.frequencyType === "Manual"
+          ? config?.selectedManualMonths
+          : config?.calculatedBillingMonths) || [];
+      billingFrequencyString = `${
+        config?.frequencyType || "N/A"
+      } (${months.join(", ")})`;
+    } else if (isValidContract.billingType === "multi") {
+      billingFrequencyString = "Multiple Frequencies Configured";
+    } else if (isValidContract.billingFrequency) {
+      billingFrequencyString = isValidContract.billingFrequency;
+    }
+
     doc.render({
       prefix: prefix,
       name: name,
@@ -335,7 +376,7 @@ const creatCont = async (id, req, res) => {
       start: start,
       end: end,
       sales: sales,
-      billingFrequency: billingFrequency,
+      billingFrequency: billingFrequencyString,
       shipPrefix: shipToAddress.prefix,
       shipName: shipToAddress.name,
       shipAdd1: shipToAddress.address1,
@@ -370,7 +411,6 @@ const createContrtact = async (id, req, res) => {
     contractNo,
     startDate,
     endDate,
-    billingFrequency,
     shipToAddress,
     billToAddress,
     billToContact1,
@@ -397,13 +437,33 @@ const createContrtact = async (id, req, res) => {
     city,
     pincode,
   } = shipToAddress;
+
+  const start = moment(startDate).format("MMMM YYYY");
+  const end = moment(endDate).format("MMMM YYYY");
+
   try {
     let template = fs.readFileSync(path.resolve(__dirname, "contract8.docx"));
+
+    let billingFrequencyString = "Not Configured";
+
+    if (isValidContract.billingType === "single") {
+      const config = isValidContract.singleBillingConfig;
+      const months =
+        (config?.frequencyType === "Manual"
+          ? config?.selectedManualMonths
+          : config?.calculatedBillingMonths) || [];
+      billingFrequencyString = `${
+        config?.frequencyType || "N/A"
+      } (${months.join(", ")})`;
+    } else if (isValidContract.billingType === "multi") {
+      billingFrequencyString = "Multiple Frequencies Configured";
+    } else if (isValidContract.billingFrequency) {
+      billingFrequencyString = isValidContract.billingFrequency;
+    }
 
     const buffer = await newdoc.createReport({
       cmdDelimiter: ["{", "}"],
       template,
-
       additionalJsContext: {
         prefix: prefix,
         name: name,
@@ -421,7 +481,7 @@ const createContrtact = async (id, req, res) => {
         biillName: billToContact1.name,
         biillNo: billToContact1.contact,
         biillEmail: billToContact1.email,
-        billingFrequency: billingFrequency,
+        billingFrequency: billingFrequencyString,
         shipPrefix: shipToAddress.prefix,
         shipName: shipToAddress.name,
         shipAdd1: shipToAddress.address1,
@@ -515,7 +575,7 @@ const generateQr = async (isValidContract, services) => {
       use_filename: true,
       folder: "service-cards",
     });
-    const serv = await Service.findByIdAndUpdate(
+    await Service.findByIdAndUpdate(
       { _id: serviceId },
       { qr: result.secure_url },
       {

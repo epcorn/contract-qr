@@ -1,4 +1,5 @@
 const Contract = require("../models/contract");
+const Service = require("../models/service"); // <-- IMPORT THE SERVICE MODEL
 const { BadRequestError } = require("../errors");
 const fs = require("fs");
 const cloudinary = require("cloudinary").v2;
@@ -283,6 +284,153 @@ const testingReportBLR = async (req, res) => {
   }
 };
 
+const updateBillingConfig = async (req, res) => {
+  const { id: contractId } = req.params;
+  const { billingType, singleBillingConfig, multiBillingConfig } = req.body;
+
+  console.log("updateBillingConfig called with:", {
+    contractId,
+    billingType,
+    singleBillingConfig,
+    multiBillingConfig,
+  });
+
+  try {
+    // Step 1: Validate input data
+    if (!billingType || !["single", "multi"].includes(billingType)) {
+      throw new BadRequestError("Invalid or missing billingType");
+    }
+
+    if (
+      billingType === "single" &&
+      (!singleBillingConfig || !singleBillingConfig.frequencyType)
+    ) {
+      throw new BadRequestError("singleBillingConfig is missing or invalid");
+    }
+
+    if (
+      billingType === "multi" &&
+      multiBillingConfig &&
+      !Array.isArray(multiBillingConfig)
+    ) {
+      throw new BadRequestError("multiBillingConfig must be an array");
+    }
+
+    // Step 2: Find and update the contract
+    const contract = await Contract.findById(contractId);
+    if (!contract) {
+      console.log("Contract not found:", contractId);
+      return res
+        .status(404)
+        .json({ msg: `No contract with id: ${contractId}` });
+    }
+
+    contract.billingType = billingType;
+    contract.singleBillingConfig =
+      billingType === "single" ? singleBillingConfig : {};
+    contract.multiBillingConfig =
+      billingType === "multi" ? multiBillingConfig : [];
+
+    await contract.save();
+    console.log("Contract saved with updated billing config:", {
+      billingType: contract.billingType,
+      singleBillingConfig: contract.singleBillingConfig,
+      multiBillingConfig: contract.multiBillingConfig,
+    });
+
+    // Step 3: Update service billing months
+    if (billingType === "single") {
+      const finalMonths =
+        singleBillingConfig.frequencyType === "Manual"
+          ? singleBillingConfig.selectedManualMonths || []
+          : singleBillingConfig.calculatedBillingMonths || [];
+
+      if (!finalMonths.length) {
+        console.warn(
+          "No billing months provided for single billing:",
+          singleBillingConfig
+        );
+      }
+
+      const updateResult = await Service.updateMany(
+        { contract: contractId },
+        { $set: { billingMonths: finalMonths } }
+      );
+      console.log("Service update result for single billing:", updateResult);
+    } else if (billingType === "multi") {
+      if (!multiBillingConfig || multiBillingConfig.length === 0) {
+        console.log("No multiBillingConfig provided, clearing billing months");
+        const updateResult = await Service.updateMany(
+          { contract: contractId },
+          { $set: { billingMonths: [] } }
+        );
+        console.log(
+          "Service update result for empty multi billing:",
+          updateResult
+        );
+      } else {
+        // Validate service IDs
+        const serviceIds = multiBillingConfig.map((config) => config.serviceId);
+        const validServices = await Service.find({
+          _id: { $in: serviceIds },
+          contract: contractId,
+        });
+        const validServiceIds = validServices.map((s) => s._id.toString());
+        const invalidServiceIds = serviceIds.filter(
+          (id) => !validServiceIds.includes(id)
+        );
+
+        if (invalidServiceIds.length > 0) {
+          console.warn(
+            "Invalid service IDs in multiBillingConfig:",
+            invalidServiceIds
+          );
+          throw new BadRequestError(
+            `Invalid service IDs: ${invalidServiceIds.join(", ")}`
+          );
+        }
+
+        const bulkOps = multiBillingConfig.map((config) => {
+          const finalMonths =
+            config.frequencyType === "Manual"
+              ? config.selectedManualMonths || []
+              : config.calculatedBillingMonths || [];
+          console.log(
+            `Preparing bulk update for service ${config.serviceId}:`,
+            finalMonths
+          );
+          return {
+            updateOne: {
+              filter: { _id: config.serviceId, contract: contractId },
+              update: { $set: { billingMonths: finalMonths } },
+            },
+          };
+        });
+
+        if (bulkOps.length > 0) {
+          const bulkResult = await Service.bulkWrite(bulkOps);
+          console.log("Bulk write result for multi billing:", bulkResult);
+        } else {
+          console.log("No bulk operations to execute for multi billing");
+        }
+      }
+    }
+
+    // Step 4: Return updated contract for verification
+    const updatedContract = await Contract.findById(contractId).populate(
+      "services"
+    );
+    res.status(200).json({
+      msg: "Billing configuration saved successfully.",
+      contract: updatedContract,
+    });
+  } catch (error) {
+    console.error("Error updating billing config:", error);
+    res.status(error.statusCode || 500).json({
+      msg: error.message || "Server error while saving billing configuration.",
+    });
+  }
+};
 module.exports = {
   getAllContracts,
   createContract,
@@ -292,4 +440,5 @@ module.exports = {
   fileUpload,
   deleteFile,
   testingReportBLR,
+  updateBillingConfig, // <-- EXPORT THE NEW FUNCTION
 };

@@ -1,14 +1,7 @@
 const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
-// Define a separate schema for the counter
-const CounterSchema = new mongoose.Schema({
-  _id: { type: String, required: true },
-  seq: { type: Number, default: 0 },
-});
-
-const Counter = mongoose.model("Counter", CounterSchema);
-
-const ServiceSchema = new mongoose.Schema(
+const ServiceSchema = new Schema(
   {
     frequency: {
       type: String,
@@ -19,22 +12,12 @@ const ServiceSchema = new mongoose.Schema(
       required: [true, "Please provide service name"],
     },
     serviceDue: [String],
-    image: {
-      type: String,
-    },
-    card: {
-      type: String,
-    },
-    qr: {
-      type: String,
-    },
+    image: { type: String },
+    card: { type: String },
+    qr: { type: String },
     chemicals: [String],
-    area: {
-      type: String,
-    },
-    business: {
-      type: String,
-    },
+    area: { type: String },
+    business: { type: String },
     serviceReport: {
       type: Boolean,
       default: false,
@@ -44,34 +27,28 @@ const ServiceSchema = new mongoose.Schema(
       required: [true, "Please provide treatment location"],
     },
     contract: {
-      type: mongoose.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Contract",
       required: true,
     },
     serviceCardNumber: {
       type: Number,
-      required: false,
+      min: 1,
+      index: true,
     },
+    // --- NEW QUERYABLE FIELD ADDED ---
+    billingMonths: {
+      type: [String],
+      index: true, // Index for super-fast lookups!
+    },
+    // --- END NEW QUERYABLE FIELD ---
   },
-  { toJSON: { virtuals: true }, toObject: { virtuals: true } }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
-
-// We will no longer use a pre('save') hook. Instead, we'll use a static method
-// to create a new service and handle the numbering safely.
-ServiceSchema.statics.createServiceWithNumber = async function (serviceData) {
-  // Find the counter document for this contract. If it doesn't exist, create it.
-  const counter = await Counter.findOneAndUpdate(
-    { _id: serviceData.contract.toString() },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-
-  // Assign the new, unique serviceCardNumber to the service data.
-  serviceData.serviceCardNumber = counter.seq;
-
-  // Create and return the new service document.
-  return this.create(serviceData);
-};
 
 ServiceSchema.virtual("serviceReports", {
   ref: "ServiceReport",
@@ -79,5 +56,52 @@ ServiceSchema.virtual("serviceReports", {
   foreignField: "service",
   justOne: false,
 });
+
+// Pre-save hook to assign serviceCardNumber for new services
+ServiceSchema.pre("save", async function (next) {
+  if (
+    this.isNew &&
+    (this.serviceCardNumber === null || this.serviceCardNumber === undefined)
+  ) {
+    try {
+      const highestService = await this.constructor
+        .findOne({ contract: this.contract })
+        .sort({ serviceCardNumber: -1 });
+      this.serviceCardNumber =
+        highestService && highestService.serviceCardNumber
+          ? highestService.serviceCardNumber + 1
+          : 1;
+    } catch (error) {
+      console.error("Error assigning serviceCardNumber:", error);
+      return next(error);
+    }
+  }
+  next();
+});
+
+// --- NEW HOOK FOR RE-NUMBERING AFTER DELETION ADDED ---
+ServiceSchema.post("remove", async function (doc, next) {
+  try {
+    const remainingServices = await this.constructor
+      .find({ contract: doc.contract })
+      .sort({ serviceCardNumber: "asc" });
+
+    const updates = remainingServices.map((service, index) => ({
+      updateOne: {
+        filter: { _id: service._id },
+        update: { $set: { serviceCardNumber: index + 1 } },
+      },
+    }));
+
+    if (updates.length > 0) {
+      await this.constructor.bulkWrite(updates);
+    }
+    next();
+  } catch (error) {
+    console.error("Error re-numbering services after deletion:", error);
+    next(error);
+  }
+});
+// --- END NEW HOOK ---
 
 module.exports = mongoose.model("Service", ServiceSchema);

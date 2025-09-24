@@ -23,7 +23,6 @@ export const calculateBillingMonths = (startDate, frequencyType, endDate) => {
   switch (frequencyType) {
     case "50% while signing contract and 50% after 6 months": {
       const sixMonthsLater = moment(startMoment).add(6, "months");
-      // Only add the month if it's within the contract period
       if (sixMonthsLater.isBefore(endMoment)) {
         billingMonths.add(sixMonthsLater.format("MMM YYYY"));
       }
@@ -31,7 +30,6 @@ export const calculateBillingMonths = (startDate, frequencyType, endDate) => {
     }
 
     case "Quarterly start": {
-      // Bill at the start of every 3-month period from the start date
       while (currentMoment.isBefore(endMoment)) {
         billingMonths.add(currentMoment.format("MMM YYYY"));
         currentMoment.add(3, "months");
@@ -40,7 +38,6 @@ export const calculateBillingMonths = (startDate, frequencyType, endDate) => {
     }
 
     case "Quarterly end": {
-      // Bill at the end of every 3-month period from the start date
       let quarterEndMoment = moment(startMoment).add(2, "months");
       while (quarterEndMoment.isBefore(endMoment)) {
         billingMonths.add(quarterEndMoment.format("MMM YYYY"));
@@ -50,7 +47,6 @@ export const calculateBillingMonths = (startDate, frequencyType, endDate) => {
     }
 
     case "Alternate Monthly": {
-      // Bill every other month from the start date
       while (currentMoment.isBefore(endMoment)) {
         billingMonths.add(currentMoment.format("MMM YYYY"));
         currentMoment.add(2, "months");
@@ -59,13 +55,11 @@ export const calculateBillingMonths = (startDate, frequencyType, endDate) => {
     }
 
     case "End of contract": {
-      // The billing month is the end date of the contract
       billingMonths.add(moment(endDate).format("MMM YYYY"));
       break;
     }
 
     case "Monthly": {
-      // Add each month from start to end date
       while (currentMoment.isBefore(endMoment)) {
         billingMonths.add(currentMoment.format("MMM YYYY"));
         currentMoment.add(1, "month");
@@ -73,6 +67,8 @@ export const calculateBillingMonths = (startDate, frequencyType, endDate) => {
       break;
     }
 
+    // CHANGED: Added the new option here
+    case "Full payment in advance":
     case "Bill After Job":
     case "Manual":
       // No automatic calculation for these options
@@ -82,7 +78,6 @@ export const calculateBillingMonths = (startDate, frequencyType, endDate) => {
       return [];
   }
 
-  // Sort the results chronologically before returning
   return Array.from(billingMonths).sort((a, b) =>
     moment(a, "MMM YYYY").diff(moment(b, "MMM YYYY"))
   );

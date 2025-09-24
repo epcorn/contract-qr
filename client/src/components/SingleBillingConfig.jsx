@@ -25,8 +25,6 @@ const ManualBillingMonthsPicker = ({
     }
   }
 
-  // Convert the array of selected month strings (e.g., ["Sep 2025"])
-  // into the format react-select expects: [{value: "Sep 2025", label: "Sep 2025"}]
   const selectedOptions = Array.isArray(selectedMonths)
     ? selectedMonths.map((monthStr) => ({
         value: monthStr,
@@ -43,9 +41,8 @@ const ManualBillingMonthsPicker = ({
         id="selectedManualMonths"
         name="selectedManualMonths"
         isMulti
-        options={monthYearOptions} // Use the new dynamic options
+        options={monthYearOptions}
         value={selectedOptions}
-        // onChange now extracts the value string from the selected object
         onChange={(selected) =>
           handleMonthChange(selected ? selected.map((s) => s.value) : [])
         }
@@ -82,6 +79,7 @@ const SingleBillingConfig = ({ startDate, endDate }) => {
     useDataContext();
 
   const billingFrequencyOptions = [
+    "Full payment in advance", // CHANGED: Added new option
     "50% while signing contract and 50% after 6 months",
     "Quarterly start",
     "Quarterly end",
@@ -96,13 +94,12 @@ const SingleBillingConfig = ({ startDate, endDate }) => {
     frequencyType = "",
     manualDescription = "",
     calculatedBillingMonths = [],
-    selectedManualMonths = [], // This will now be an array of strings like ["Sep 2025"]
+    selectedManualMonths = [],
   } = singleBillingConfig || {};
 
   const handleManualMonthsChange = useCallback(
     (months) => {
-      // The context and reducer can handle the new string array without changes
-      setBillingMonths("single", months, "manual");
+      setBillingMonths("single", months, null, "manual");
     },
     [setBillingMonths]
   );
@@ -112,7 +109,6 @@ const SingleBillingConfig = ({ startDate, endDate }) => {
       return;
     }
 
-    // This logic correctly handles clearing the other month array when switching modes
     if (frequencyType === "Manual") {
       if (
         Array.isArray(calculatedBillingMonths) &&
@@ -157,15 +153,12 @@ const SingleBillingConfig = ({ startDate, endDate }) => {
           <InputSelect
             label="Billing Frequency Type:"
             name="frequencyType"
-            // The 'id' prop is no longer the main way it works, but it's good for HTML
             id="single-billing-frequency"
             value={frequencyType || ""}
             data={billingFrequencyOptions}
             hasPlaceholder={true}
             placeholderText="-- Select Frequency Type --"
             required={true}
-            // THIS IS THE CHANGE:
-            // Wrap handleChange to pass the correct 'id' for the state slice
             handleChange={(e) => handleChange(e, { id: "singleBillingConfig" })}
           />
         </div>
@@ -182,7 +175,7 @@ const SingleBillingConfig = ({ startDate, endDate }) => {
                 id="singleBillingConfig"
                 value={manualDescription}
                 placeholder="e.g., Bill as per service completion (Optional)"
-                required={false} // <-- UPDATED: No longer required
+                required={false}
                 handleChange={handleChange}
               />
             </div>
@@ -192,8 +185,8 @@ const SingleBillingConfig = ({ startDate, endDate }) => {
               <ManualBillingMonthsPicker
                 selectedMonths={selectedManualMonths}
                 handleMonthChange={handleManualMonthsChange}
-                startDate={startDate} // Pass props
-                endDate={endDate} // Pass props
+                startDate={startDate}
+                endDate={endDate}
               />
             </div>
           </div>

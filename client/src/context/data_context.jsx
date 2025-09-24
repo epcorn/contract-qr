@@ -60,6 +60,8 @@ import {
   SET_BILLING_MONTHS,
   FETCH_SERVICES_FOR_CONTRACT,
   INITIALIZE_MULTI_BILLING,
+  SAVE_BILLING_CONFIG_SUCCESS,
+  SAVE_BILLING_CONFIG_FAIL,
 } from "./action";
 
 const DataContext = createContext();
@@ -225,8 +227,8 @@ export const DataProvider = ({ children }) => {
     }
   );
 
-  const displayAlert = (message = "An error occurred. Please try again.") => {
-    dispatch({ type: CUSTOM_ALERT, payload: message });
+  const displayAlert = ({ type, msg }) => {
+    dispatch({ type: DISPLAY_ALERT, payload: { type, msg } });
     clearAlert();
   };
 
@@ -246,6 +248,32 @@ export const DataProvider = ({ children }) => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+  };
+
+  const saveBillingConfig = async (contractId) => {
+    dispatch({ type: LOADING });
+    try {
+      const { billingType, singleBillingConfig, multiBillingConfig } = state;
+
+      await authFetch.patch(`/contracts/${contractId}/billing`, {
+        billingType,
+        singleBillingConfig,
+        multiBillingConfig,
+      });
+
+      dispatch({
+        type: SAVE_BILLING_CONFIG_SUCCESS,
+        payload: { msg: "Billing configuration saved successfully!" },
+      });
+    } catch (error) {
+      dispatch({
+        type: SAVE_BILLING_CONFIG_FAIL,
+        payload: {
+          msg: error.response?.data?.msg || "Failed to save. Please try again.",
+        },
+      });
+      throw error;
+    }
   };
 
   const registerUser = async (currentUser) => {
@@ -412,16 +440,20 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const fetchServicesForContract = async (id) => {
+  const fetchServicesForContract = async (id, contractNumber) => {
+    // <-- ACCEPTS ARGUMENT
     dispatch({ type: LOADING });
     try {
-      const contractNumber = state.singleContract.contractNo;
       if (!contractNumber) {
-        throw new Error("Contract number is not available.");
+        // <-- USES ARGUMENT
+        throw new Error(
+          "Contract number was not provided to fetchServicesForContract."
+        );
       }
+      // ...
 
       const res = await authFetch.get(
-        `/billing-services?search=${contractNumber}`
+        `/admin/billing-services?search=${contractNumber}`
       );
 
       const services = res.data.services;
@@ -441,16 +473,26 @@ export const DataProvider = ({ children }) => {
   };
 
   const fetchSingleContract = async (id) => {
+    console.log(
+      "CHECKPOINT 1: [CONTEXT] Starting fetchSingleContract for id:",
+      id
+    ); // <-- ADD
     dispatch({ type: LOADING });
     try {
       const res = await authFetch.get(`/contracts/${id}`);
       const contract = res.data.contract;
+      console.log(
+        "CHECKPOINT 2: [CONTEXT] API success. Fetched contract:",
+        contract
+      ); // <-- ADD
       dispatch({
         type: FETCH_CONTRACT,
         payload: { contract, id },
       });
+      return contract;
     } catch (error) {
-      console.log(error);
+      console.error("ERROR in fetchSingleContract:", error); // <-- ADD
+      return null;
     }
   };
 
@@ -718,7 +760,7 @@ export const DataProvider = ({ children }) => {
     try {
       const res = await authFetch.get(`/service/create/${id}`);
       dispatch({ type: CREATE_CARDS, payload: res.data.msg });
-      dispatch({ type: CLEAR_VALUES });
+      //dispatch({ type: CLEAR_VALUES });
     } catch (error) {
       console.log(error);
     }
@@ -799,28 +841,9 @@ export const DataProvider = ({ children }) => {
       return;
     }
 
-    // UPDATED LOGIC HERE
     if (id === "multiBillingConfig") {
       const { startDate, singleContract } = state;
-      // IMPORTANT: Make sure singleContract and its endDate exist
       const endDate = singleContract ? singleContract.endDate : undefined;
-
-      // --- ADD THESE LINES ---
-      console.log("2. Context: Preparing to dispatch HANDLE_CHANGE.");
-      console.log("   > Payload will be:", {
-        index,
-        name,
-        value,
-        id,
-        startDate,
-        endDate,
-      });
-      if (!startDate || !endDate) {
-        console.error(
-          "   > DEBUG ERROR: Start Date or End Date is missing or invalid!"
-        );
-      }
-      // --- END OF ADDED LINES ---
 
       dispatch({
         type: HANDLE_CHANGE,
@@ -1069,6 +1092,7 @@ export const DataProvider = ({ children }) => {
         updateMultiBillingEntry,
         removeMultiBillingEntry,
         setBillingMonths,
+        saveBillingConfig,
       }}
     >
       {children}
