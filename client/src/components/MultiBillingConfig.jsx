@@ -67,7 +67,7 @@ const MultiBillingConfig = ({ services, startDate, endDate }) => {
     useDataContext();
 
   const billingFrequencyOptions = [
-    "Full payment in advance", // CHANGED: Added new option
+    "Full Payment While Signing The Contract", // CHANGED: Added new option
     "50% while signing contract and 50% after 6 months",
     "Quarterly start",
     "Quarterly end",
