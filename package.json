@@ -8,6 +8,10 @@
     "start": "node server.js",
     "heroku-postbuild": "cd client && npm install --production=false && npm run build && rm -rf client/node_modules"
   },
+  "engines": {
+    "node": "22.18.0",
+    "npm": "10.9.3"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
