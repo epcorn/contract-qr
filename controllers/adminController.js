@@ -98,26 +98,71 @@ const contractServices = async (req, res) => {
     const contracT = await Contract.findOne({ contractNo: search })
       .sort("-createdAt")
       .populate("services");
-    if (!contracT) return res.status(404).json({ msg: "No Contract Found" });
 
-    const serviceArrays = contracT.services.map(
-      ({ _id, service, ...rest }) => ({ _id, service })
+    if (!contracT) {
+      return res.status(404).json({ msg: "No Contract Found" });
+    }
+
+    // Safely collect emails, removing any that are null or undefined
+    const billEmail = [
+      contracT.billToContact1?.email,
+      contracT.billToContact2?.email,
+      contracT.billToContact3?.email,
+    ].filter(Boolean);
+
+    const shipEmail = [
+      contracT.shipToContact1?.email,
+      contracT.shipToContact2?.email,
+      contracT.shipToContact3?.email,
+    ].filter(Boolean);
+
+    // Helper function to safely construct the address string
+    const formatAddress = (addr) => {
+      if (!addr) return "";
+      return [
+        addr.address1,
+        addr.address2,
+        addr.address3,
+        addr.address4,
+        addr.nearBy,
+        addr.city,
+        addr.pincode,
+      ]
+        .filter(Boolean) // Remove any empty or null parts
+        .join(", ");
+    };
+
+    // Safely construct the details object
+    const details = {
+      number: contracT.contractNo,
+      billToName: contracT.billToAddress?.name,
+      billToAddress: formatAddress(contracT.billToAddress),
+      billToEmails: billEmail,
+      shipToName: contracT.shipToAddress?.name,
+      shipToAddress: formatAddress(contracT.shipToAddress),
+      shipToEmails: shipEmail,
+    };
+
+    // Correctly transform the services array into the flat structure the frontend needs
+    const services = contracT.services.flatMap((serviceDoc) =>
+      serviceDoc.service
+        .filter(Boolean) // Filter out any empty strings
+        .map((serviceName) => ({
+          name: serviceName,
+          serviceId: serviceDoc._id,
+        }))
     );
 
-    const services = serviceArrays.map((obj) => {
-      obj.service = obj.service.filter((a) => a !== "");
-      return { ...obj };
-    });
-
-    const newServices = services.map((x) =>
-      x.service.map((name) => ({ name, serviceId: x._id }))
-    );
-    const output = newServices.flat(2);
-
-    res.status(200).json({ details: {}, services: output });
+    res.status(200).json({ details, services });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ msg: "Server Error", error: error.message });
+    console.error("Error fetching contract services:", error);
+    // Send a meaningful error response
+    res
+      .status(500)
+      .json({
+        msg: "An unexpected server error occurred.",
+        error: error.message,
+      });
   }
 };
 

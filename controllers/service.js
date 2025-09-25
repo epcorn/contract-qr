@@ -58,6 +58,7 @@ const createDoc = async (req, res) => {
     sendMail,
     company,
   } = isValidContract;
+
   const shipToContact = [];
   shipToContact.push(shipToContact1, shipToContact2, shipToContact3);
 
@@ -73,18 +74,10 @@ const createDoc = async (req, res) => {
   const fourth = shipToContact3.email;
   temails.add(first);
   temails.add(second);
-  if (third) {
-    temails.add(third);
-  }
-  if (fourth) {
-    temails.add(fourth);
-  }
-  if (fifth) {
-    temails.add(fifth);
-  }
-  if (six) {
-    temails.add(six);
-  }
+  if (third) temails.add(third);
+  if (fourth) temails.add(fourth);
+  if (fifth) temails.add(fifth);
+  if (six) temails.add(six);
   const emails = [...temails];
 
   const {
@@ -100,12 +93,7 @@ const createDoc = async (req, res) => {
   } = shipToAddress;
   const { day, time } = preferred;
 
-  var pre = "";
-  if (prefix === "Other") {
-    var pre = "";
-  } else {
-    var pre = prefix;
-  }
+  var pre = prefix === "Other" ? "" : prefix;
 
   const allserv = [];
   const allfreq = [];
@@ -116,32 +104,40 @@ const createDoc = async (req, res) => {
   });
 
   try {
-    services.forEach(async (element, index) => {
+    for (const [index, element] of services.entries()) {
       let billingFrequencyString = "Not Configured";
+
+      // --- START OF THE FIX ---
 
       if (isValidContract.billingType === "single") {
         const config = isValidContract.singleBillingConfig;
-        const months =
-          (config?.frequencyType === "Manual"
-            ? config?.selectedManualMonths
-            : config?.calculatedBillingMonths) || [];
-        billingFrequencyString = `${
-          config?.frequencyType || "N/A"
-        } (${months.join(", ")})`;
+        if (config && config.frequencyType) {
+          // Read the months directly from the service element, which is where they were saved.
+          const months = element.billingMonths || [];
+          billingFrequencyString = `${config.frequencyType} (${months.join(
+            ", "
+          )})`;
+        }
       } else if (isValidContract.billingType === "multi") {
+        // First, find the config on the contract to get the "frequencyType" (e.g., "Manual", "Monthly")
         const multiConfig = isValidContract.multiBillingConfig.find(
-          (c) => c.serviceId.toString() === element._id.toString()
+          (c) =>
+            c.serviceId && c.serviceId.toString() === element._id.toString()
         );
-        if (multiConfig) {
-          const months =
-            (multiConfig.frequencyType === "Manual"
-              ? multiConfig.selectedManualMonths
-              : multiConfig.calculatedBillingMonths) || [];
+
+        if (multiConfig && multiConfig.frequencyType) {
+          // Then, get the actual saved months directly from the service element itself.
+          // This avoids re-calculating and uses the data you actually saved.
+          const months = element.billingMonths || [];
           billingFrequencyString = `${multiConfig.frequencyType} (${months.join(
             ", "
           )})`;
         }
-      } else if (isValidContract.billingFrequency) {
+      }
+
+      // --- END OF THE FIX ---
+      else if (isValidContract.billingFrequency) {
+        // This is legacy fallback logic, keep as is.
         billingFrequencyString = isValidContract.billingFrequency;
       }
 
@@ -152,20 +148,17 @@ const createDoc = async (req, res) => {
       const template2 = fs.readFileSync(path.resolve(__dirname, "test4.docx"));
       const template3 = fs.readFileSync(path.resolve(__dirname, "test5.docx"));
       const chem = element.chemicals;
-      const allServices = element.service.map((x, index) => ({
+      const allServices = element.service.map((x, idx) => ({
         name: x,
-        chemicals: chem[index],
+        chemicals: chem[idx],
       }));
 
       if (
         allServices[0].name ===
         "Termiproof - SIP(Installation of Smart Injecting System)"
       ) {
-        if (billToAddress.name.trim() === name.trim()) {
-          template = template2;
-        } else {
-          template = template3;
-        }
+        template =
+          billToAddress.name.trim() === name.trim() ? template2 : template3;
       } else if (billToAddress.name.trim() === name.trim()) {
         template = template1;
       }
@@ -201,7 +194,7 @@ const createDoc = async (req, res) => {
           billingFrequency: billingFrequencyString,
           specialInstruction: specialInstruction,
           url: "12",
-          qrCode: async (url12) => {
+          qrCode: async () => {
             const dataUrl = tp;
             const data = await dataUrl.slice("data:image/png;base64,".length);
             return { width: 2, height: 2, data, extension: ".png" };
@@ -217,6 +210,7 @@ const createDoc = async (req, res) => {
         path.resolve(__dirname, "../files/", `${filename}.docx`),
         buffer
       );
+
       const result = await cloudinary.uploader.upload(
         `files/${filename}.docx`,
         {
@@ -225,16 +219,16 @@ const createDoc = async (req, res) => {
           folder: "service-cards",
         }
       );
+
       await Service.findByIdAndUpdate(
         { _id: z },
         { card: result.secure_url },
-        {
-          new: true,
-          runValidators: true,
-        }
+        { new: true, runValidators: true }
       );
+
       fs.unlinkSync(`./files/${filename}.docx`);
-    });
+    }
+
     if (type === "NC" && !sendMail) {
       sendContractEmail(emails, contractNo, allserv, allfreq, start, end, id);
     }
@@ -242,6 +236,9 @@ const createDoc = async (req, res) => {
     res.status(200).json({ msg: "Cards created successfully" });
   } catch (error) {
     console.log(error);
+    res
+      .status(500)
+      .json({ msg: "Failed to create service cards.", error: error.message });
   }
 };
 
