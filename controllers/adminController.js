@@ -132,7 +132,7 @@ const contractServices = async (req, res) => {
         .join(", ");
     };
 
-    // Safely construct the details object
+    // CORRECTION 1 & 2: Safely construct the details object
     const details = {
       number: contracT.contractNo,
       billToName: contracT.billToAddress?.name,
@@ -156,13 +156,10 @@ const contractServices = async (req, res) => {
     res.status(200).json({ details, services });
   } catch (error) {
     console.error("Error fetching contract services:", error);
-    // Send a meaningful error response
-    res
-      .status(500)
-      .json({
-        msg: "An unexpected server error occurred.",
-        error: error.message,
-      });
+    res.status(500).json({
+      msg: "An unexpected server error occurred.",
+      error: error.message,
+    });
   }
 };
 
