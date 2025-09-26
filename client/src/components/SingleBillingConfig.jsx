@@ -173,11 +173,12 @@ const SingleBillingConfig = ({ startDate, endDate }) => {
                 label="Manual Billing Description:"
                 type="text"
                 name="manualDescription"
-                id="singleBillingConfig"
                 value={manualDescription}
                 placeholder="e.g., Bill as per service completion (Optional)"
                 required={false}
-                handleChange={handleChange}
+                handleChange={(e) =>
+                  handleChange(e, { id: "singleBillingConfig" })
+                }
               />
             </div>
           </div>
