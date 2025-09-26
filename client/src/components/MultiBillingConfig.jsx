@@ -75,6 +75,7 @@ const MultiBillingConfig = ({ services, startDate, endDate }) => {
     "End of contract",
     "Monthly",
     "Bill After Job",
+    "NTB",
     "Manual",
   ];
 

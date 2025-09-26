@@ -87,6 +87,7 @@ const SingleBillingConfig = ({ startDate, endDate }) => {
     "End of contract",
     "Monthly",
     "Bill After Job",
+    "NTB", // new option
     "Manual",
   ];
 
