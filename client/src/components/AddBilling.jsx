@@ -69,7 +69,7 @@ const AddBilling = () => {
     try {
       await saveBillingConfig(contractId);
       setTimeout(() => {
-        navigate(`/contracts/${contractId}`);
+        navigate(`/contract/${contractId}`);
       }, 2000);
     } catch (error) {
       // The context already displayed the error alert.
