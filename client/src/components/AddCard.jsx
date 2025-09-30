@@ -210,34 +210,21 @@ const AddCard = () => {
     }
   };
 
-  // --- UPDATED GENERATE CARDS HANDLER WITH PROPER ERROR HANDLING ---
-  const generateCards = async (e) => {
+  const generateCards = (e) => {
     e.preventDefault();
-    setIsSubmiting(true);
 
-    try {
-      await createCards(id);
-
-      // This part now only runs on success
-      setAdd(!add);
-      displayAlert({
-        type: "success",
-        msg: "Cards created! Redirecting to billing...",
-      });
-      navigate(`/add-billing/${id}`);
-    } catch (error) {
-      // This part now runs on failure
-      console.error("Error creating cards:", error);
+    // Keep the check to ensure at least one service has been added
+    if (!services || services.length === 0) {
       displayAlert({
         type: "danger",
-        msg: "Failed to create cards. Please check console for details.",
+        msg: "Please add at least one service card before proceeding.",
       });
-    } finally {
-      // This always runs
-      setIsSubmiting(false);
+      return;
     }
-  };
 
+    // Remove all logic except for the navigation
+    navigate(`/add-billing/${id}`);
+  };
   if (loading && !isSubmiting) {
     // Prevent double loading indicator
     return <Loading />;

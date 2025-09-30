@@ -276,6 +276,39 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const saveConfigAndGenerateDocs = async (contractId) => {
+    dispatch({ type: LOADING });
+    try {
+      const { billingType, singleBillingConfig, multiBillingConfig } = state;
+
+      // This is our new backend endpoint that will handle both actions
+      await authFetch.post(`/service/finalize-setup/${contractId}`, {
+        billingType,
+        singleBillingConfig,
+        multiBillingConfig,
+      });
+
+      // We can reuse the existing success action type for the alert
+      dispatch({
+        type: SAVE_BILLING_CONFIG_SUCCESS,
+        payload: {
+          msg: "Billing saved and service cards generated successfully!",
+        },
+      });
+    } catch (error) {
+      // Reuse the existing fail action type
+      dispatch({
+        type: SAVE_BILLING_CONFIG_FAIL,
+        payload: {
+          msg:
+            error.response?.data?.msg || "An error occurred. Please try again.",
+        },
+      });
+      // Re-throw the error so the component's catch block can see it
+      throw error;
+    }
+  };
+
   const registerUser = async (currentUser) => {
     dispatch({ type: LOADING });
     try {
@@ -1093,6 +1126,7 @@ export const DataProvider = ({ children }) => {
         removeMultiBillingEntry,
         setBillingMonths,
         saveBillingConfig,
+        saveConfigAndGenerateDocs,
       }}
     >
       {children}

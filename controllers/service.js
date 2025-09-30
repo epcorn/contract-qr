@@ -203,6 +203,7 @@ const createDoc = async (req, res) => {
       });
 
       const contractName = contractNo.replace(/\//g, "-");
+      console.log("Billing Frequency String : ", billingFrequencyString);
       const filename = `${contractName} ${element.frequency} ${
         index + 1
       } ${company}`;
@@ -239,6 +240,258 @@ const createDoc = async (req, res) => {
     res
       .status(500)
       .json({ msg: "Failed to create service cards.", error: error.message });
+  }
+};
+const finalizeAndGenerate = async (req, res) => {
+  try {
+    // --- Part 1: Save the Billing Configuration ---
+    const { id } = req.params;
+    const { billingType, singleBillingConfig, multiBillingConfig } = req.body;
+
+    const contractToUpdate = await Contract.findById(id);
+    if (!contractToUpdate) {
+      return res.status(404).json({ msg: "Contract not found" });
+    }
+
+    contractToUpdate.billingType = billingType;
+    contractToUpdate.singleBillingConfig = singleBillingConfig;
+    contractToUpdate.multiBillingConfig = multiBillingConfig;
+
+    await contractToUpdate.save();
+
+    // --- Part 1.5: Propagate Billing Months to Each Service Card ---
+    const servicesToUpdate = await Service.find({ contract: id });
+    const updatePromises = servicesToUpdate.map((service) => {
+      let monthsForThisService = [];
+
+      if (billingType === "single") {
+        const config = singleBillingConfig;
+        if (config.frequencyType === "Manual") {
+          monthsForThisService = config.selectedManualMonths || [];
+        } else {
+          monthsForThisService = config.calculatedBillingMonths || [];
+        }
+      } else if (billingType === "multi") {
+        const multiConfigForService = multiBillingConfig.find(
+          (c) =>
+            c.serviceId && c.serviceId.toString() === service._id.toString()
+        );
+        if (multiConfigForService) {
+          if (multiConfigForService.frequencyType === "Manual") {
+            monthsForThisService =
+              multiConfigForService.selectedManualMonths || [];
+          } else {
+            monthsForThisService =
+              multiConfigForService.calculatedBillingMonths || [];
+          }
+        }
+      }
+
+      service.billingMonths = monthsForThisService;
+      return service.save();
+    });
+
+    await Promise.all(updatePromises);
+
+    // --- Part 2: Generate the Documents (Logic from createDoc) ---
+    const isValidContract = await Contract.findOne({ _id: id }).populate(
+      "services"
+    );
+
+    const {
+      contractNo,
+      startDate,
+      endDate,
+      shipToAddress,
+      billToAddress,
+      billToContact1,
+      billToContact2,
+      billToContact3,
+      shipToContact1,
+      shipToContact2,
+      shipToContact3,
+      services,
+      preferred,
+      specialInstruction,
+      type,
+      sales,
+      sendMail,
+      company,
+    } = isValidContract;
+
+    const shipToContact = [];
+    shipToContact.push(shipToContact1, shipToContact2, shipToContact3);
+
+    const start = moment(startDate).format("MMMM YYYY");
+    const end = moment(endDate).format("MMMM YYYY");
+
+    const temails = new Set();
+    const first = billToContact1.email;
+    const second = shipToContact1.email;
+    const fifth = billToContact2.email;
+    const six = billToContact3.email;
+    const third = shipToContact2.email;
+    const fourth = shipToContact3.email;
+    temails.add(first);
+    temails.add(second);
+    if (third) temails.add(third);
+    if (fourth) temails.add(fourth);
+    if (fifth) temails.add(fifth);
+    if (six) temails.add(six);
+    const emails = [...temails];
+
+    const {
+      prefix,
+      name,
+      address1,
+      address2,
+      address3,
+      address4,
+      nearBy,
+      city,
+      pincode,
+    } = shipToAddress;
+    const { day, time } = preferred;
+
+    var pre = prefix === "Other" ? "" : prefix;
+
+    const allserv = [];
+    const allfreq = [];
+
+    services.map((item) => {
+      allfreq.push(item.frequency);
+      item.service.map((n) => allserv.push(n));
+    });
+
+    for (const [index, element] of services.entries()) {
+      let billingFrequencyString = "Not Configured";
+
+      if (isValidContract.billingType === "single") {
+        const config = isValidContract.singleBillingConfig;
+        if (config && config.frequencyType) {
+          const months = element.billingMonths || [];
+          billingFrequencyString = `${config.frequencyType} (${months.join(
+            ", "
+          )})`;
+        }
+      } else if (isValidContract.billingType === "multi") {
+        const multiConfig = isValidContract.multiBillingConfig.find(
+          (c) =>
+            c.serviceId && c.serviceId.toString() === element._id.toString()
+        );
+
+        if (multiConfig && multiConfig.frequencyType) {
+          const months = element.billingMonths || [];
+          billingFrequencyString = `${multiConfig.frequencyType} (${months.join(
+            ", "
+          )})`;
+        }
+      } else if (isValidContract.billingFrequency) {
+        billingFrequencyString = isValidContract.billingFrequency;
+      }
+
+      const z = element._id.toString();
+      const tp = await QRCode.toDataURL(`https://cqr.sat9.in/feedback/${z}`);
+      let template = fs.readFileSync(path.resolve(__dirname, "test3.docx"));
+      const template1 = fs.readFileSync(path.resolve(__dirname, "test2.docx"));
+      const template2 = fs.readFileSync(path.resolve(__dirname, "test4.docx"));
+      const template3 = fs.readFileSync(path.resolve(__dirname, "test5.docx"));
+      const chem = element.chemicals;
+      const allServices = element.service.map((x, idx) => ({
+        name: x,
+        chemicals: chem[idx],
+      }));
+
+      if (
+        allServices[0].name ===
+        "Termiproof - SIP(Installation of Smart Injecting System)"
+      ) {
+        template =
+          billToAddress.name.trim() === name.trim() ? template2 : template3;
+      } else if (billToAddress.name.trim() === name.trim()) {
+        template = template1;
+      }
+
+      const buffer = await newdoc.createReport({
+        cmdDelimiter: ["{", "}"],
+        template,
+        additionalJsContext: {
+          contractNo: contractNo,
+          type: type,
+          sales: sales,
+          day: day,
+          time: time,
+          card: index + 1,
+          noCards: services.length,
+          billPrefix: billToAddress.prefix,
+          billName: billToAddress.name,
+          prefix: pre,
+          name: name,
+          address1: address1,
+          address2: address2,
+          address3: address3,
+          address4: address4,
+          city: city,
+          nearBy: nearBy,
+          pincode: pincode,
+          shipToContact: shipToContact,
+          serviceDue: element.serviceDue,
+          service: allServices,
+          frequency: element.frequency,
+          location: element.treatmentLocation,
+          area: element.area,
+          billingFrequency: billingFrequencyString,
+          specialInstruction: specialInstruction,
+          url: "12",
+          qrCode: async () => {
+            const dataUrl = tp;
+            const data = await dataUrl.slice("data:image/png;base64,".length);
+            return { width: 2, height: 2, data, extension: ".png" };
+          },
+        },
+      });
+
+      const contractName = contractNo.replace(/\//g, "-");
+      console.log("Billing Frequency String : ", billingFrequencyString);
+      const filename = `${contractName} ${element.frequency} ${
+        index + 1
+      } ${company}`;
+      fs.writeFileSync(
+        path.resolve(__dirname, "../files/", `${filename}.docx`),
+        buffer
+      );
+
+      const result = await cloudinary.uploader.upload(
+        `files/${filename}.docx`,
+        {
+          resource_type: "raw",
+          use_filename: true,
+          folder: "service-cards",
+        }
+      );
+
+      await Service.findByIdAndUpdate(
+        { _id: z },
+        { card: result.secure_url },
+        { new: true, runValidators: true }
+      );
+
+      fs.unlinkSync(`./files/${filename}.docx`);
+    }
+
+    if (type === "NC" && !sendMail) {
+      sendContractEmail(emails, contractNo, allserv, allfreq, start, end, id);
+    }
+
+    res
+      .status(200)
+      .json({ msg: "Configuration saved and cards generated successfully!" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      msg: "An error occurred during the final setup process.",
+      error: error.message,
+    });
   }
 };
 
@@ -1668,6 +1921,7 @@ module.exports = {
   deleteService,
   generateReport,
   generateBusinessFile,
+  finalizeAndGenerate,
   getAllStats,
   dailyReport,
   serviceNotDoneReport,

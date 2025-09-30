@@ -18,6 +18,7 @@ const AddBilling = () => {
     fetchSingleContract,
     fetchServicesForContract,
     servicesForContract,
+    saveConfigAndGenerateDocs, // will now generate docs after billing information is saved.
   } = useDataContext();
 
   const { contractNo, startDate, endDate } = singleContract || {};
@@ -67,13 +68,19 @@ const AddBilling = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await saveBillingConfig(contractId);
+      // Call our new master function instead of the old one
+      await saveConfigAndGenerateDocs(contractId);
+
+      // The navigation logic after success remains the same
       setTimeout(() => {
         navigate(`/contract/${contractId}`);
       }, 2000);
     } catch (error) {
-      // The context already displayed the error alert.
-      console.error("Failed to save billing configuration:", error);
+      // The context will handle displaying the alert. We can still log the error.
+      console.error(
+        "Failed to save configuration and generate documents:",
+        error
+      );
     }
   };
 

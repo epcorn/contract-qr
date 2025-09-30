@@ -19,6 +19,7 @@ const {
   editService,
   serviceIntimation,
   getBranchReport,
+  finalizeAndGenerate,
 } = require("../controllers/service");
 
 router
@@ -40,6 +41,9 @@ router
   .route("/create/:id")
   .get(authorizeUser("Sales", "Admin", "Back Office"), createDoc)
   .patch(authorizeUser("Sales", "Admin"), editService);
+router
+  .route("/finalize-setup/:id")
+  .post(authorizeUser("Sales", "Admin"), finalizeAndGenerate);
 router
   .route("/intimation/:id")
   .post(authorizeUser("Admin", "B2"), serviceIntimation);
